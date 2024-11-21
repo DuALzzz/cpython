@@ -774,7 +774,7 @@ resume_frame:
     assert(!_PyErr_Occurred(tstate));
 #endif
 
-    DISPATCH();
+    DISPATCH();// 初始化opcode和oparg(by 'NEXTOARG' macro)
 
     {
     /* Start instructions */

@@ -2656,7 +2656,7 @@
             DISPATCH();
         }
 
-        TARGET(ENTER_EXECUTOR) {
+        TARGET(ENTER_EXECUTOR) {//key point to tier 2
             _Py_CODEUNIT *this_instr = frame->instr_ptr = next_instr;
             (void)this_instr;
             next_instr += 1;
@@ -3597,7 +3597,7 @@
             DISPATCH();
         }
 
-        TARGET(JUMP_BACKWARD) {
+        TARGET(JUMP_BACKWARD) {// the ONLY bytecode that can tier up(can't find ENTER_EXECUTOR anywhere)
             _Py_CODEUNIT *this_instr = frame->instr_ptr = next_instr;
             (void)this_instr;
             next_instr += 2;
@@ -3616,15 +3616,16 @@
                     oparg >>= 8;
                     start--;
                 }
+                //Begin to create a new executor
                 _PyExecutorObject *executor;
-                int optimized = _PyOptimizer_Optimize(frame, start, stack_pointer, &executor);
+                int optimized = _PyOptimizer_Optimize(frame, start, stack_pointer, &executor);//Where 'ENTER_EXECUTOR' is inserted
                 if (optimized < 0) goto error;
-                if (optimized) {
+                if (optimized) { // successful optimization
                     assert(tstate->previous_executor == NULL);
                     tstate->previous_executor = Py_None;
                     GOTO_TIER_TWO(executor);
                 }
-                else {
+                else {// no executor created
                     this_instr[1].counter = restart_backoff_counter(counter);
                 }
             }
