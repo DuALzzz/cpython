@@ -169,4 +169,4 @@ Python/frozen_modules/MANIFEST
 /python
 !/Python/
 /pythonjit
-perf.data*
+perf*
