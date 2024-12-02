@@ -1,7 +1,7 @@
 #####
 # First, rules intended to apply in all subdirectories.
 # These contain no slash, or only a trailing slash.
-
+*.patch
 *.cover
 *.iml
 *.o
