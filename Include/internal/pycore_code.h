@@ -10,7 +10,7 @@ extern "C" {
 
 #include "pycore_lock.h"        // PyMutex
 #include "pycore_backoff.h"     // _Py_BackoffCounter
-
+#include "pycore_codeunit.h"    // _Py_CODEUNIT
 
 /* Each instruction in a code object is a fixed-width value,
  * currently 2 bytes: 1-byte opcode + 1-byte oparg.  The EXTENDED_ARG
@@ -21,7 +21,7 @@ extern "C" {
  * 2**32 - 1, rather than INT_MAX.
  */
 
-#include "pycore_codeunit.h"
+
 
 #define _PyCode_CODE(CO) _Py_RVALUE((_Py_CODEUNIT *)(CO)->co_code_adaptive)
 #define _PyCode_NBYTES(CO) (Py_SIZE(CO) * (Py_ssize_t)sizeof(_Py_CODEUNIT))
@@ -586,6 +586,8 @@ extern int _Py_Instrument(PyCodeObject *co, PyInterpreterState *interp);
 extern int _Py_GetBaseOpcode(PyCodeObject *code, int offset);
 
 extern int _PyInstruction_GetLength(PyCodeObject *code, int offset);
+
+
 
 #ifdef __cplusplus
 }

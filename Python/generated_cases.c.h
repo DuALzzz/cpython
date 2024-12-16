@@ -100,10 +100,10 @@
 
         TARGET(BINARY_OP) {
             frame->instr_ptr = next_instr;
-            next_instr += 2;
+            next_instr += 6;
             INSTRUCTION_STATS(BINARY_OP);
             PREDICTED(BINARY_OP);
-            _Py_CODEUNIT *this_instr = next_instr - 2;
+            _Py_CODEUNIT *this_instr = next_instr - 6;
             (void)this_instr;
             PyObject *rhs;
             PyObject *lhs;
@@ -131,6 +131,7 @@
                 assert(NB_ADD <= oparg);
                 assert(oparg <= NB_INPLACE_XOR);
             }
+            /* Skip 4 cache entries */
             // _BINARY_OP
             {
                 assert(_PyEval_BinaryOps[oparg]);
@@ -956,7 +957,6 @@
             PyObject **args;
             _PyInterpreterFrame *new_frame;
             /* Skip 1 cache entry */
-            /* Skip 4 cache entries */
             // _CHECK_PEP_523
             {
                 DEOPT_IF(tstate->interp->eval_frame, CALL);
@@ -981,13 +981,14 @@
             self_or_null = self;
             callable = func;
             {
-                uint32_t func_version = read_u32(&this_instr[6].cache);
+                uint32_t func_version = read_u32(&this_instr[2].cache);
                 DEOPT_IF(!PyFunction_Check(callable), CALL);
                 PyFunctionObject *func = (PyFunctionObject *)callable;
                 DEOPT_IF(func->func_version != func_version, CALL);
                 PyCodeObject *code = (PyCodeObject *)func->func_code;
                 DEOPT_IF(code->co_argcount != oparg + (self_or_null != NULL), CALL);
             }
+            /* Skip 4 cache entries */
             // _CHECK_STACK_SPACE
             {
                 PyFunctionObject *func = (PyFunctionObject *)callable;
@@ -1049,7 +1050,6 @@
             PyObject *self_or_null;
             _PyInterpreterFrame *new_frame;
             /* Skip 1 cache entry */
-            /* Skip 4 cache entries */
             // _CHECK_PEP_523
             {
                 DEOPT_IF(tstate->interp->eval_frame, CALL);
@@ -1058,13 +1058,14 @@
             null = stack_pointer[-1 - oparg];
             callable = stack_pointer[-2 - oparg];
             {
-                uint32_t func_version = read_u32(&this_instr[6].cache);
+                uint32_t func_version = read_u32(&this_instr[2].cache);
                 DEOPT_IF(Py_TYPE(callable) != &PyMethod_Type, CALL);
                 PyObject *func = ((PyMethodObject *)callable)->im_func;
                 DEOPT_IF(!PyFunction_Check(func), CALL);
                 DEOPT_IF(((PyFunctionObject *)func)->func_version != func_version, CALL);
                 DEOPT_IF(null != NULL, CALL);
             }
+            /* Skip 4 cache entries */
             // _EXPAND_METHOD
             {
                 assert(null == NULL);
@@ -1911,7 +1912,6 @@
             PyObject **args;
             _PyInterpreterFrame *new_frame;
             /* Skip 1 cache entry */
-            /* Skip 4 cache entries */
             // _CHECK_PEP_523
             {
                 DEOPT_IF(tstate->interp->eval_frame, CALL);
@@ -1920,13 +1920,14 @@
             self_or_null = stack_pointer[-1 - oparg];
             callable = stack_pointer[-2 - oparg];
             {
-                uint32_t func_version = read_u32(&this_instr[6].cache);
+                uint32_t func_version = read_u32(&this_instr[2].cache);
                 DEOPT_IF(!PyFunction_Check(callable), CALL);
                 PyFunctionObject *func = (PyFunctionObject *)callable;
                 DEOPT_IF(func->func_version != func_version, CALL);
                 PyCodeObject *code = (PyCodeObject *)func->func_code;
                 DEOPT_IF(code->co_argcount != oparg + (self_or_null != NULL), CALL);
             }
+            /* Skip 4 cache entries */
             // _CHECK_STACK_SPACE
             {
                 PyFunctionObject *func = (PyFunctionObject *)callable;
@@ -1985,7 +1986,6 @@
             PyObject *self_or_null;
             _PyInterpreterFrame *new_frame;
             /* Skip 1 cache entry */
-            /* Skip 4 cache entries */
             // _CHECK_PEP_523
             {
                 DEOPT_IF(tstate->interp->eval_frame, CALL);
@@ -1993,11 +1993,12 @@
             // _CHECK_FUNCTION_VERSION
             callable = stack_pointer[-2 - oparg];
             {
-                uint32_t func_version = read_u32(&this_instr[6].cache);
+                uint32_t func_version = read_u32(&this_instr[2].cache);
                 DEOPT_IF(!PyFunction_Check(callable), CALL);
                 PyFunctionObject *func = (PyFunctionObject *)callable;
                 DEOPT_IF(func->func_version != func_version, CALL);
             }
+            /* Skip 4 cache entries */
             // _PY_FRAME_GENERAL
             args = &stack_pointer[-oparg];
             self_or_null = stack_pointer[-1 - oparg];

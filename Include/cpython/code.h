@@ -15,6 +15,8 @@ extern "C" {
 /* Count of all  monitoring events */
 #define _PY_MONITORING_EVENTS 17
 
+
+
 /* Tables of which tools are active for each monitored event. */
 typedef struct _Py_LocalMonitors {
     uint8_t tools[_PY_MONITORING_LOCAL_EVENTS];
@@ -68,6 +70,8 @@ typedef struct {
     uint8_t *per_instruction_tools;
 } _PyCoMonitoringData;
 
+
+// External Specific
 typedef struct _deoptInfo{
     // if a whole chain of instructions is deoptimized
     struct _deoptInfo *child;

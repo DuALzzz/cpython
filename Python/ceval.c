@@ -788,6 +788,15 @@ resume_frame:
         switch (opcode)
 #endif
         {
+            TARGET(BINARY_OP_EXTERNAL){
+
+            }
+            TARGET(BINARY_SUBSCR_EXTERNAL){
+
+            }
+            TARGET(CALL_EXTERNAL){
+                
+            }
 
 #include "generated_cases.c.h"
 

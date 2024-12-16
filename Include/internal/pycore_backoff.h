@@ -13,16 +13,16 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
-
-typedef struct {
-    union {
-        struct {
-            uint16_t backoff : 4;
-            uint16_t value : 12;
-        };
-        uint16_t as_counter;  // For printf("%#x", ...)
-    };
-} _Py_BackoffCounter;
+# include "pycore_codeunit.h"
+// typedef struct {
+//     union {
+//         struct {
+//             uint16_t backoff : 4;
+//             uint16_t value : 12;
+//         };
+//         uint16_t as_counter;  // For printf("%#x", ...)
+//     };
+// } _Py_BackoffCounter;
 
 
 /* 16-bit countdown counters using exponential backoff.
