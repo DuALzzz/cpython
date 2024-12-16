@@ -36,6 +36,8 @@ PyAPI_FUNC(int) PyUnstable_InterpreterFrame_GetLasti(struct _PyInterpreterFrame 
  * Does not raise an exception. */
 PyAPI_FUNC(int) PyUnstable_InterpreterFrame_GetLine(struct _PyInterpreterFrame *frame);
 
+PyAPI_FUNC(void) PyExternal_SetSpecializer(PyExternalSpecializer *specializer);
+//PyAPI_FUNC(int) PyExternal_SpecializeInstruction(_Py_CODEUNIT *instr, int slot, PyExternal_CodeHandler new_handler);
 #define PyUnstable_EXECUTABLE_KIND_SKIP 0
 #define PyUnstable_EXECUTABLE_KIND_PY_FUNCTION 1
 #define PyUnstable_EXECUTABLE_KIND_BUILTIN_FUNCTION 3

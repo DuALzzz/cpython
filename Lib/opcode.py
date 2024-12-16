@@ -49,6 +49,7 @@ _cache_format = {
     },
     "BINARY_OP": {
         "counter": 1,
+        "external_cache_pointer":4,
     },
     "UNPACK_SEQUENCE": {
         "counter": 1,
@@ -61,6 +62,7 @@ _cache_format = {
     },
     "BINARY_SUBSCR": {
         "counter": 1,
+        "external_cache_pointer":4,
     },
     "FOR_ITER": {
         "counter": 1,
@@ -82,6 +84,7 @@ _cache_format = {
     "CALL": {
         "counter": 1,
         "func_version": 2,
+        "external_cache_pointer":4,
     },
     "STORE_SUBSCR": {
         "counter": 1,

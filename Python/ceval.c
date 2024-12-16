@@ -673,6 +673,11 @@ extern void _PyUOpPrint(const _PyUOpInstruction *uop);
 #  pragma warning(disable:4102)
 #endif
 
+static PyExternal_CodeHandler external_handlers[256];
+void
+PyExternal_SetCodeHandler(int slot, PyExternal_CodeHandler handler) {
+    external_handlers[slot] = handler;
+}
 
 /* _PyEval_EvalFrameDefault() is a *big* function,
  * so consume 3 units of C stack */

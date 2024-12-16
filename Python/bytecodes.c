@@ -423,6 +423,7 @@ dummy_func(
             BINARY_OP_ADD_FLOAT,
             BINARY_OP_SUBTRACT_FLOAT,
             BINARY_OP_ADD_UNICODE,
+            //BINARY_OP_EXTERNAL,
             // BINARY_OP_INPLACE_ADD_UNICODE,  // See comments at that opcode.
         };
 
@@ -464,11 +465,11 @@ dummy_func(
         }
 
         macro(BINARY_OP_MULTIPLY_INT) =
-            _GUARD_BOTH_INT + unused/1 + _BINARY_OP_MULTIPLY_INT;
+            _GUARD_BOTH_INT + unused/1 + unused/4 + _BINARY_OP_MULTIPLY_INT;
         macro(BINARY_OP_ADD_INT) =
-            _GUARD_BOTH_INT + unused/1 + _BINARY_OP_ADD_INT;
+            _GUARD_BOTH_INT + unused/1 + unused/4 + _BINARY_OP_ADD_INT;
         macro(BINARY_OP_SUBTRACT_INT) =
-            _GUARD_BOTH_INT + unused/1 + _BINARY_OP_SUBTRACT_INT;
+            _GUARD_BOTH_INT + unused/1 + unused/4 + _BINARY_OP_SUBTRACT_INT;
 
         op(_GUARD_BOTH_FLOAT, (left, right -- left, right)) {
             EXIT_IF(!PyFloat_CheckExact(left));
@@ -508,11 +509,11 @@ dummy_func(
         }
 
         macro(BINARY_OP_MULTIPLY_FLOAT) =
-            _GUARD_BOTH_FLOAT + unused/1 + _BINARY_OP_MULTIPLY_FLOAT;
+            _GUARD_BOTH_FLOAT + unused/1 + unused/4 + _BINARY_OP_MULTIPLY_FLOAT;
         macro(BINARY_OP_ADD_FLOAT) =
-            _GUARD_BOTH_FLOAT + unused/1 + _BINARY_OP_ADD_FLOAT;
+            _GUARD_BOTH_FLOAT + unused/1 + unused/4 + _BINARY_OP_ADD_FLOAT;
         macro(BINARY_OP_SUBTRACT_FLOAT) =
-            _GUARD_BOTH_FLOAT + unused/1 + _BINARY_OP_SUBTRACT_FLOAT;
+            _GUARD_BOTH_FLOAT + unused/1 + unused/4 + _BINARY_OP_SUBTRACT_FLOAT;
 
         op(_GUARD_BOTH_UNICODE, (left, right -- left, right)) {
             EXIT_IF(!PyUnicode_CheckExact(left));
@@ -528,7 +529,7 @@ dummy_func(
         }
 
         macro(BINARY_OP_ADD_UNICODE) =
-            _GUARD_BOTH_UNICODE + unused/1 + _BINARY_OP_ADD_UNICODE;
+            _GUARD_BOTH_UNICODE + unused/1 + unused/4 + _BINARY_OP_ADD_UNICODE;
 
         // This is a subtle one. It's a super-instruction for
         // BINARY_OP_ADD_UNICODE followed by STORE_FAST
@@ -563,7 +564,20 @@ dummy_func(
         }
 
         macro(BINARY_OP_INPLACE_ADD_UNICODE) =
-            _GUARD_BOTH_UNICODE + unused/1 + _BINARY_OP_INPLACE_ADD_UNICODE;
+            _GUARD_BOTH_UNICODE + unused/1 + unused/4 + _BINARY_OP_INPLACE_ADD_UNICODE;
+
+        // inst(BINARY_OP_EXTERNAL,(left,right,unused/1,unused/4 -- res)){
+        //     _PyBinaryOpCache* cache = (_PyBinaryOpCache*)next_instr;
+        //     void* external_cache_pointer = POINTER_FROM_ARRAY(cache->external_cache_pointer);
+        //     int result = external_handlers[oparg](external_cache_pointer, &stack_pointer);
+        //     if (result == 2) {
+        //         unsigned long offset = next_instr - 1 - _PyCode_CODE(_PyFrame_GetCode(frame));
+        //         next_instr = _PyExternal_Deoptimize(next_instr - 1, frame);
+        //         oparg = next_instr->op.arg;
+        //         DISPATCH_SAME_OPARG();
+        //     }
+        //     next_instr += INLINE_CACHE_ENTRIES_BINARY_OP;
+        // }
 
         family(BINARY_SUBSCR, INLINE_CACHE_ENTRIES_BINARY_SUBSCR) = {
             BINARY_SUBSCR_DICT,
@@ -571,13 +585,19 @@ dummy_func(
             BINARY_SUBSCR_LIST_INT,
             BINARY_SUBSCR_STR_INT,
             BINARY_SUBSCR_TUPLE_INT,
+            //BINARY_SUBSCR_EXTERNAL,
         };
 
         specializing op(_SPECIALIZE_BINARY_SUBSCR, (counter/1, container, sub -- container, sub)) {
             #if ENABLE_SPECIALIZATION
+             _PyBinarySubscrCache *cache = (_PyBinarySubscrCache *)next_instr;
             if (ADAPTIVE_COUNTER_TRIGGERS(counter)) {
                 next_instr = this_instr;
                 _Py_Specialize_BinarySubscr(container, sub, next_instr);
+                int result = _PyExternal_TrySpecialize(next_instr,&stack_pointer,(_PyCache *)cache);
+                if(result){
+                    oparg = next_instr->op.arg;
+                }
                 DISPATCH_SAME_OPARG();
             }
             STAT_INC(BINARY_SUBSCR, deferred);
@@ -591,7 +611,7 @@ dummy_func(
             ERROR_IF(res == NULL, error);
         }
 
-        macro(BINARY_SUBSCR) = _SPECIALIZE_BINARY_SUBSCR + _BINARY_SUBSCR;
+        macro(BINARY_SUBSCR) = _SPECIALIZE_BINARY_SUBSCR + unused/4 + _BINARY_SUBSCR;
 
         inst(BINARY_SLICE, (container, start, stop -- res)) {
             PyObject *slice = _PyBuildSlice_ConsumeRefs(start, stop);
@@ -623,7 +643,7 @@ dummy_func(
             ERROR_IF(err, error);
         }
 
-        inst(BINARY_SUBSCR_LIST_INT, (unused/1, list, sub -- res)) {
+        inst(BINARY_SUBSCR_LIST_INT, (unused/1,unused/4, list, sub -- res)) {
             DEOPT_IF(!PyLong_CheckExact(sub));
             DEOPT_IF(!PyList_CheckExact(list));
 
@@ -639,7 +659,20 @@ dummy_func(
             Py_DECREF(list);
         }
 
-        inst(BINARY_SUBSCR_STR_INT, (unused/1, str, sub -- res)) {
+        // inst(BINARY_SUBSCR_EXTERNAL,(unused/1,unused/4, list, sub -- res)){
+        //     _PyBinarySubscrCache* cache = (_PyBinarySubscrCache*)next_instr;
+        //     void* external_cache_pointer = POINTER_FROM_ARRAY(cache->external_cache_pointer);
+        //     int result = external_handlers[oparg](external_cache_pointer, &stack_pointer);
+        //     if (result == 2) {
+        //         unsigned long offset = next_instr - 1 - _PyCode_CODE(_PyFrame_GetCode(frame));
+        //         next_instr = _PyExternal_Deoptimize(next_instr - 1, frame);
+        //         oparg = next_instr->op.arg;
+        //         DISPATCH_SAME_OPARG();
+        //     }
+        //     next_instr += INLINE_CACHE_ENTRIES_BINARY_SUBSCR;
+        // }
+
+        inst(BINARY_SUBSCR_STR_INT, (unused/1,unused/4, str, sub -- res)) {
             DEOPT_IF(!PyLong_CheckExact(sub));
             DEOPT_IF(!PyUnicode_CheckExact(str));
             DEOPT_IF(!_PyLong_IsNonNegativeCompact((PyLongObject *)sub));
@@ -654,7 +687,7 @@ dummy_func(
             Py_DECREF(str);
         }
 
-        inst(BINARY_SUBSCR_TUPLE_INT, (unused/1, tuple, sub -- res)) {
+        inst(BINARY_SUBSCR_TUPLE_INT, (unused/1, unused/4, tuple, sub -- res)) {
             DEOPT_IF(!PyLong_CheckExact(sub));
             DEOPT_IF(!PyTuple_CheckExact(tuple));
 
@@ -670,7 +703,7 @@ dummy_func(
             Py_DECREF(tuple);
         }
 
-        inst(BINARY_SUBSCR_DICT, (unused/1, dict, sub -- res)) {
+        inst(BINARY_SUBSCR_DICT, (unused/1,unused/4, dict, sub -- res)) {
             DEOPT_IF(!PyDict_CheckExact(dict));
             STAT_INC(BINARY_SUBSCR, hit);
             int rc = PyDict_GetItemRef(dict, sub, &res);
@@ -681,7 +714,7 @@ dummy_func(
             ERROR_IF(rc <= 0, error); // not found or error
         }
 
-        inst(BINARY_SUBSCR_GETITEM, (unused/1, container, sub -- unused)) {
+        inst(BINARY_SUBSCR_GETITEM, (unused/1,unused/4, container, sub -- unused)) {
             DEOPT_IF(tstate->interp->eval_frame);
             PyTypeObject *tp = Py_TYPE(container);
             DEOPT_IF(!PyType_HasFeature(tp, Py_TPFLAGS_HEAPTYPE));
@@ -833,6 +866,7 @@ dummy_func(
             #endif
             SYNC_SP();
             _PyFrame_SetStackPointer(frame, stack_pointer);
+            _PyExternal_FunctionEnd(frame);
             assert(EMPTY());
             _Py_LeaveRecursiveCallPy(tstate);
             // GH-99729: We need to unlink the frame *before* clearing it:
@@ -3060,7 +3094,7 @@ dummy_func(
             GO_TO_INSTRUCTION(CALL);
         }
 
-        // Cache layout: counter/1, func_version/2
+        // Cache layout: counter/1, func_version/2, external_cache/4
         // CALL_INTRINSIC_1/2, CALL_KW, and CALL_FUNCTION_EX aren't members!
         family(CALL, INLINE_CACHE_ENTRIES_CALL) = {
             CALL_BOUND_METHOD_EXACT_ARGS,
@@ -3083,13 +3117,19 @@ dummy_func(
             CALL_PY_GENERAL,
             CALL_BOUND_METHOD_GENERAL,
             CALL_NON_PY_GENERAL,
+            //CALL_EXTERNAL,
         };
 
         specializing op(_SPECIALIZE_CALL, (counter/1, callable, self_or_null, args[oparg] -- callable, self_or_null, args[oparg])) {
             #if ENABLE_SPECIALIZATION
+            _PyCallCache *cache = (_PyCallCache *)next_instr;
             if (ADAPTIVE_COUNTER_TRIGGERS(counter)) {
                 next_instr = this_instr;
                 _Py_Specialize_Call(callable, next_instr, oparg + (self_or_null != NULL));
+                int result = _PyExternal_TrySpecialize(next_instr,&stack_pointer,(_PyCache *)cache);
+                if(result){
+                    oparg = next_instr->op.arg;
+                }
                 DISPATCH_SAME_OPARG();
             }
             STAT_INC(CALL, deferred);
@@ -3170,7 +3210,7 @@ dummy_func(
             CHECK_EVAL_BREAKER();
         }
 
-        macro(CALL) = _SPECIALIZE_CALL + unused/2 + _CALL + _CHECK_PERIODIC;
+        macro(CALL) = _SPECIALIZE_CALL + unused/2 + unused/4 + _CALL + _CHECK_PERIODIC;
 
         op(_PY_FRAME_GENERAL, (callable, self_or_null, args[oparg] -- new_frame: _PyInterpreterFrame*)) {
             // oparg counts all of the args, but *not* self:
@@ -3202,6 +3242,7 @@ dummy_func(
 
         macro(CALL_PY_GENERAL) =
             unused/1 + // Skip over the counter
+            unused/4 +
             _CHECK_PEP_523 +
             _CHECK_FUNCTION_VERSION +
             _PY_FRAME_GENERAL +
@@ -3230,6 +3271,7 @@ dummy_func(
 
         macro(CALL_BOUND_METHOD_GENERAL) =
             unused/1 + // Skip over the counter
+            unused/4 +
             _CHECK_PEP_523 +
             _CHECK_METHOD_VERSION +
             _EXPAND_METHOD +
@@ -3267,6 +3309,7 @@ dummy_func(
         macro(CALL_NON_PY_GENERAL) =
             unused/1 + // Skip over the counter
             unused/2 +
+            unused/4 +
             _CHECK_IS_NOT_PY_CALLABLE +
             _CALL_NON_PY_GENERAL +
             _CHECK_PERIODIC;
@@ -3333,6 +3376,7 @@ dummy_func(
 
         macro(CALL_BOUND_METHOD_EXACT_ARGS) =
             unused/1 + // Skip over the counter
+            unused/4 +
             _CHECK_PEP_523 +
             _CHECK_CALL_BOUND_METHOD_EXACT_ARGS +
             _INIT_CALL_BOUND_METHOD_EXACT_ARGS +
@@ -3344,6 +3388,7 @@ dummy_func(
 
         macro(CALL_PY_EXACT_ARGS) =
             unused/1 + // Skip over the counter
+            unused/4 +
             _CHECK_PEP_523 +
             _CHECK_FUNCTION_EXACT_ARGS +
             _CHECK_STACK_SPACE +
@@ -3351,7 +3396,7 @@ dummy_func(
             _SAVE_RETURN_OFFSET +
             _PUSH_FRAME;
 
-        inst(CALL_TYPE_1, (unused/1, unused/2, callable, null, arg -- res)) {
+        inst(CALL_TYPE_1, (unused/1, unused/2, unused/4,callable, null, arg -- res)) {
             assert(oparg == 1);
             DEOPT_IF(null != NULL);
             DEOPT_IF(callable != (PyObject *)&PyType_Type);
@@ -3373,6 +3418,7 @@ dummy_func(
         macro(CALL_STR_1) =
             unused/1 +
             unused/2 +
+            unused/4 +
             _CALL_STR_1 +
             _CHECK_PERIODIC;
 
@@ -3389,10 +3435,11 @@ dummy_func(
         macro(CALL_TUPLE_1) =
             unused/1 +
             unused/2 +
+            unused/4 +
             _CALL_TUPLE_1 +
             _CHECK_PERIODIC;
 
-        inst(CALL_ALLOC_AND_ENTER_INIT, (unused/1, unused/2, callable, null, args[oparg] -- unused)) {
+        inst(CALL_ALLOC_AND_ENTER_INIT, (unused/1, unused/2,unused/4, callable, null, args[oparg] -- unused)) {
             /* This instruction does the following:
              * 1. Creates the object (by calling ``object.__new__``)
              * 2. Pushes a shim frame to the frame stack (to cleanup after ``__init__``)
@@ -3445,6 +3492,19 @@ dummy_func(
             goto start_frame;
         }
 
+        // inst(CALL_EXTERNAL,(unused/1, unused/2,unused/4, callable, null, args[oparg] -- unused)){
+        //     _PyCallCache* cache = (_PyCallCache*)next_instr;
+        //     void* external_cache_pointer = POINTER_FROM_ARRAY(cache->external_cache_pointer);
+        //     int result = external_handlers[oparg](external_cache_pointer, &stack_pointer);
+        //     if (result == 2) {
+        //         unsigned long offset = next_instr - 1 - _PyCode_CODE(_PyFrame_GetCode(frame));
+        //         next_instr = _PyExternal_Deoptimize(next_instr - 1, frame);
+        //         oparg = next_instr->op.arg;
+        //         DISPATCH_SAME_OPARG();
+        //     }
+        //     next_instr += INLINE_CACHE_ENTRIES_CALL;
+        // }
+
         inst(EXIT_INIT_CHECK, (should_be_none -- )) {
             assert(STACK_LEVEL() == 2);
             if (should_be_none != Py_None) {
@@ -3477,6 +3537,7 @@ dummy_func(
         macro(CALL_BUILTIN_CLASS) =
             unused/1 +
             unused/2 +
+            unused/4 +
             _CALL_BUILTIN_CLASS +
             _CHECK_PERIODIC;
 
@@ -3508,6 +3569,7 @@ dummy_func(
         macro(CALL_BUILTIN_O) =
             unused/1 +
             unused/2 +
+            unused/4 +
             _CALL_BUILTIN_O +
             _CHECK_PERIODIC;
 
@@ -3540,6 +3602,7 @@ dummy_func(
         macro(CALL_BUILTIN_FAST) =
             unused/1 +
             unused/2 +
+            unused/4 +
             _CALL_BUILTIN_FAST +
             _CHECK_PERIODIC;
 
@@ -3571,10 +3634,11 @@ dummy_func(
         macro(CALL_BUILTIN_FAST_WITH_KEYWORDS) =
             unused/1 +
             unused/2 +
+            unused/4 +
             _CALL_BUILTIN_FAST_WITH_KEYWORDS +
             _CHECK_PERIODIC;
 
-        inst(CALL_LEN, (unused/1, unused/2, callable, self_or_null, args[oparg] -- res)) {
+        inst(CALL_LEN, (unused/1, unused/2,unused/4, callable, self_or_null, args[oparg] -- res)) {
             /* len(o) */
             int total_args = oparg;
             if (self_or_null != NULL) {
@@ -3599,7 +3663,7 @@ dummy_func(
             Py_DECREF(arg);
         }
 
-        inst(CALL_ISINSTANCE, (unused/1, unused/2, callable, self_or_null, args[oparg] -- res)) {
+        inst(CALL_ISINSTANCE, (unused/1, unused/2, unused/4, callable, self_or_null, args[oparg] -- res)) {
             /* isinstance(o, o2) */
             int total_args = oparg;
             if (self_or_null != NULL) {
@@ -3627,7 +3691,7 @@ dummy_func(
         }
 
         // This is secretly a super-instruction
-        tier1 inst(CALL_LIST_APPEND, (unused/1, unused/2, callable, self, arg -- unused)) {
+        tier1 inst(CALL_LIST_APPEND, (unused/1, unused/2,unused/4, callable, self, arg -- unused)) {
             assert(oparg == 1);
             PyInterpreterState *interp = tstate->interp;
             DEOPT_IF(callable != interp->callable_cache.list_append);
@@ -3677,6 +3741,7 @@ dummy_func(
         macro(CALL_METHOD_DESCRIPTOR_O) =
             unused/1 +
             unused/2 +
+            unused/4 +
             _CALL_METHOD_DESCRIPTOR_O +
             _CHECK_PERIODIC;
 
@@ -3711,6 +3776,7 @@ dummy_func(
         macro(CALL_METHOD_DESCRIPTOR_FAST_WITH_KEYWORDS) =
             unused/1 +
             unused/2 +
+            unused/4 +
             _CALL_METHOD_DESCRIPTOR_FAST_WITH_KEYWORDS +
             _CHECK_PERIODIC;
 
@@ -3744,6 +3810,7 @@ dummy_func(
         macro(CALL_METHOD_DESCRIPTOR_NOARGS) =
             unused/1 +
             unused/2 +
+            unused/4 +
             _CALL_METHOD_DESCRIPTOR_NOARGS +
             _CHECK_PERIODIC;
 
@@ -3777,6 +3844,7 @@ dummy_func(
         macro(CALL_METHOD_DESCRIPTOR_FAST) =
             unused/1 +
             unused/2 +
+            unused/4 +
             _CALL_METHOD_DESCRIPTOR_FAST +
             _CHECK_PERIODIC;
 
@@ -4049,9 +4117,14 @@ dummy_func(
 
         specializing op(_SPECIALIZE_BINARY_OP, (counter/1, lhs, rhs -- lhs, rhs)) {
             #if ENABLE_SPECIALIZATION
+            _PyBinaryOpCache *cache = (_PyBinaryOpCache *)next_instr;
             if (ADAPTIVE_COUNTER_TRIGGERS(counter)) {
                 next_instr = this_instr;
                 _Py_Specialize_BinaryOp(lhs, rhs, next_instr, oparg, LOCALS_ARRAY);
+                int result = _PyExternal_TrySpecialize(next_instr,&stack_pointer,(_PyCache *)cache);
+                if(result){
+                    oparg = next_instr->op.arg;
+                }
                 DISPATCH_SAME_OPARG();
             }
             STAT_INC(BINARY_OP, deferred);

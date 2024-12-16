@@ -21,14 +21,7 @@ extern "C" {
  * 2**32 - 1, rather than INT_MAX.
  */
 
-typedef union {
-    uint16_t cache;
-    struct {
-        uint8_t code;
-        uint8_t arg;
-    } op;
-    _Py_BackoffCounter counter;  // First cache entry of specializable op
-} _Py_CODEUNIT;
+#include "pycore_codeunit.h"
 
 #define _PyCode_CODE(CO) _Py_RVALUE((_Py_CODEUNIT *)(CO)->co_code_adaptive)
 #define _PyCode_NBYTES(CO) (Py_SIZE(CO) * (Py_ssize_t)sizeof(_Py_CODEUNIT))
@@ -98,6 +91,7 @@ typedef struct {
 
 typedef struct {
     _Py_BackoffCounter counter;
+    uint16_t external_cache_pointer[4];
 } _PyBinaryOpCache;
 
 #define INLINE_CACHE_ENTRIES_BINARY_OP CACHE_ENTRIES(_PyBinaryOpCache)
@@ -117,6 +111,7 @@ typedef struct {
 
 typedef struct {
     _Py_BackoffCounter counter;
+    uint16_t external_cache_pointer[4];
 } _PyBinarySubscrCache;
 
 #define INLINE_CACHE_ENTRIES_BINARY_SUBSCR CACHE_ENTRIES(_PyBinarySubscrCache)
@@ -152,6 +147,7 @@ typedef struct {
 typedef struct {
     _Py_BackoffCounter counter;
     uint16_t func_version[2];
+    uint16_t external_cache_pointer[4];
 } _PyCallCache;
 
 #define INLINE_CACHE_ENTRIES_CALL CACHE_ENTRIES(_PyCallCache)
@@ -249,6 +245,7 @@ struct _PyCodeConstructor {
 
     /* the code */
     PyObject *code;
+    PyObject *size_table;
     int firstlineno;
     PyObject *linetable;
 

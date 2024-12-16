@@ -36,6 +36,10 @@ extern "C" {
 
 #define NB_OPARG_LAST                           25
 
+#define CALL_EXTERNAL                           119
+#define BINARY_OP_EXTERNAL                      120
+#define BINARY_SUBSCR_EXTERNAL                  121
+
 #ifdef __cplusplus
 }
 #endif

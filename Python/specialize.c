@@ -2585,3 +2585,427 @@ const struct _PyCode_DEF(8) _Py_InitCleanup = {
         RESUME, RESUME_AT_FUNC_START,
     }
 };
+
+// For External
+
+static void
+write_size_byte(PyCodeObject* co, int offset, int val)
+{
+    ((unsigned char *)PyBytes_AS_STRING(co->co_size_table))[offset] = val&255;
+}
+
+static unsigned char
+get_size_byte(PyCodeObject* co, int offset)
+{
+    return ((unsigned char *)PyBytes_AS_STRING(co->co_size_table))[offset];
+}
+
+static PyExternalSpecializer *external_specializer = NULL;
+
+static PyExternalDeoptInfo* _PyExternal_NewDeoptInfo(_Py_CODEUNIT* instr, _PyInterpreterFrame* frame) {
+    PyExternalDeoptInfo* deopt_info = PyMem_Malloc(sizeof(PyExternalDeoptInfo));
+    deopt_info->data = _PyOpcode_Caches[instr->op.code];
+    deopt_info->orig_instr = *instr;
+    deopt_info->position = instr;
+    deopt_info->child = NULL;
+    deopt_info->next = NULL;
+    deopt_info->prev = NULL;
+
+    PyExternalDeoptInfo* current = _PyFrame_GetCode(frame)->co_deopt_info_head;
+    if (current == NULL) {
+        _PyFrame_GetCode(frame)->co_deopt_info_head = deopt_info;
+    } else {
+        while (current->next != NULL) {
+            current = current->next;
+        }
+
+        current->next = deopt_info;
+        deopt_info->prev = current;
+    }
+    return deopt_info;
+}
+
+static PyExternalDeoptInfo*
+_PyExternal_GetDeoptInfo(const _Py_CODEUNIT* instr, _PyInterpreterFrame* frame) {
+    PyExternalDeoptInfo* current = _PyFrame_GetCode(frame)->co_deopt_info_head;
+    while (current != NULL) {
+        if (current->position == instr) {
+            return current;
+        }
+        current = current->next;
+    }
+
+    return NULL;
+}
+
+
+static void
+_PyExternal_DropDeoptInfo(PyExternalDeoptInfo* deopt_info, _PyInterpreterFrame* frame) {
+    assert(deopt_info != NULL);
+    if (deopt_info->next) {
+        deopt_info->next->prev = deopt_info->prev;
+    }
+
+    if (deopt_info->prev) {
+        deopt_info->prev->next = deopt_info->next;
+    }
+    else {
+        _PyFrame_GetCode(frame)->co_deopt_info_head = deopt_info->next;
+    }
+
+    PyMem_Free(deopt_info);
+}
+
+
+static void
+_PyExternal_FindStackposOriginator(_PyInterpreterFrame *frame, Py_ssize_t stack_sink_position, Py_ssize_t instruction_offset,
+    Py_ssize_t *originating_offset, Py_ssize_t *simulated_stack_size) {
+    // an array of instruction offsets indexed by stack positions
+    // the array contains the instruction offset of the last calculated originator of a stack element
+    Py_ssize_t last_origin[_PyFrame_GetCode(frame)->co_stacksize];
+    Py_ssize_t current_offset = instruction_offset;
+    Py_ssize_t current_stack_size = *simulated_stack_size;
+
+    for (int i = 0; i < _PyFrame_GetCode(frame)->co_stacksize; i++) {
+        last_origin[i] = -1;
+    }
+
+    while (current_offset >= 0) {
+
+        assert(current_stack_size >= 0);
+
+        // skip to the previous instruction
+        unsigned char prev_cache_size = get_size_byte(_PyCode_GetCode(frame), current_offset);
+        current_offset -= prev_cache_size;
+        current_offset--;
+
+        // obtain the stack effect of the previous instruction
+        int opcode = _Py_GetBaseOpcode(_PyCode_GetCode(frame), current_offset);
+
+        if (opcode == FOR_ITER || opcode == JUMP_FORWARD || opcode == JUMP_BACKWARD) {
+            *originating_offset = -1;
+            break;
+        }
+
+        int oparg = _PyCode_CODE(_PyFrame_GetCode(frame))[current_offset].op.arg;
+        int popped = _PyOpcode_num_popped(opcode, oparg);
+        int pushed = _PyOpcode_num_pushed(opcode, oparg);
+
+        // mark the previous instruction as the originator for the current stack elements
+        for (int i=0; i<pushed; i++) {
+            last_origin[current_stack_size - i - 1] = current_offset;
+        }
+
+        // simulate the reverse stack effect
+        current_stack_size = current_stack_size - pushed + popped;
+
+        // check if we found the origin of the stack element in question
+        if (last_origin[stack_sink_position] != -1) {
+            *originating_offset = last_origin[stack_sink_position];
+            *simulated_stack_size = current_stack_size;
+            break;
+        }
+    }
+}
+
+/// Find the instruction that creates the stack value at position "position_on_stack"
+/// and the effective stack effect of the entire chain
+///
+/// @param consuming_instruction_offset the position of the instruction that consumes the stack value in question
+/// @param frame the frame in which the instruction is executed
+/// @param position_on_stack the position of the stack value in question
+/// @param instruction_offset_out the position of the instruction that creates the stack value in question
+/// @param stack_effect_out the effective stack effect of the entire chain
+/// @param simulated_stack_size the simulated stack size at the consuming instruction. This value is updated to contain
+/// the simulated stack size before the creating instruction
+static void _PyExternal_FindDataflowSource(Py_ssize_t consuming_instruction_offset, _PyInterpreterFrame* frame,
+                                           Py_ssize_t position_on_stack,
+                                           Py_ssize_t* instruction_offset_out, short* stack_effect_out,
+                                           Py_ssize_t* simulated_stack_size) {
+    assert(position_on_stack >= 0);
+
+    Py_ssize_t source_instruction_offset = -1;
+    short skipped_stack_effect = 0;
+
+    // the number of instructions (and cache elemnts) between the sink instruction and the originator
+    Py_ssize_t skipped_instructions = 0;
+
+    // find the instruction that creates the stack value at position "position_on_stack"
+    // also update the "top_of_used_stack" to the value before the originating instruction
+    _PyExternal_FindStackposOriginator(frame, position_on_stack, consuming_instruction_offset,
+                                       &source_instruction_offset, simulated_stack_size);
+
+    if (source_instruction_offset < 0) {
+        // For some reason we could not identify the originator
+        raise(SIGTRAP);
+    }
+
+    _Py_CODEUNIT* originator = &_PyCode_CODE(_PyFrame_GetCode(frame))[source_instruction_offset];
+    const int pushed = _PyOpcode_num_pushed(originator->op.code, originator->op.arg);
+    const int popped = _PyOpcode_num_popped(originator->op.code, originator->op.arg);
+
+    skipped_instructions += _PyOpcode_Caches[_PyOpcode_Deopt[originator->op.code]] + 1;
+    skipped_stack_effect += pushed - popped;
+
+    // trace backwards argument dataflow chain
+    if (popped > 0) {
+        short arg_stack_effect = 0;
+        ssize_t lowest_argument_position = *simulated_stack_size - popped;
+        _PyExternal_FindDataflowSource(source_instruction_offset, frame, lowest_argument_position,
+                                       &source_instruction_offset,
+                                       &arg_stack_effect, simulated_stack_size);
+        skipped_stack_effect += arg_stack_effect;
+    }
+    *stack_effect_out = skipped_stack_effect;
+    *instruction_offset_out = source_instruction_offset;
+}
+
+static void
+_PyExternal_SkipArgSetup(unsigned char unused_args_bitset, _Py_CODEUNIT* instr, PyObject** stack_pointer,
+                              _PyInterpreterFrame* frame)
+{
+    Py_ssize_t initial_simulated_stack_size = (int) (stack_pointer - _PyFrame_Stackbase(frame));
+    Py_ssize_t consuming_instruction_offset = instr - _PyCode_CODE(_PyFrame_GetCode(frame));
+
+    for (int arg_position = 0; arg_position < 8; arg_position++)
+    {
+        if (unused_args_bitset & (1 << arg_position))
+        {
+            Py_ssize_t arg_chain_start = -1;
+            short arg_chain_stack_effect = 0;
+            Py_ssize_t simulated_stack_size = initial_simulated_stack_size;
+            ssize_t arg_stack_position = initial_simulated_stack_size - arg_position - 1;
+            _PyExternal_FindDataflowSource(consuming_instruction_offset, frame, arg_stack_position,
+                &arg_chain_start, &arg_chain_stack_effect, &simulated_stack_size);
+            // TODO: make sure there are no side-effecting instructions in the skipped range
+
+            assert(arg_chain_start >= 0);
+            PyExternalDeoptInfo *parent_deopt_info = _PyExternal_GetDeoptInfo(instr, frame);
+            _Py_CODEUNIT *first_in_chain = _PyCode_CODE(_PyFrame_GetCode(frame)) + arg_chain_start;
+            PyExternalDeoptInfo *chain_start_deopt_info = _PyExternal_NewDeoptInfo(first_in_chain, frame);
+
+            // rewrite to a jump
+            first_in_chain->op.code = JUMP_FORWARD;
+            // TODO: handle the case of more than one replaced argument
+            // a replaced argument chain must skip to the beginning of the argument chain of the next argument
+            // instead of directly to the consuming instruction as it is done here. In a second step, a chain of
+            // JUMP_FORWARD instructions can be converted into a single long jump
+            first_in_chain->op.arg = consuming_instruction_offset - arg_chain_start - 1;
+
+            if (arg_chain_start > 0)
+            {
+                // If the previous instruction is a super instruction, we need to deoptimize it, otherwise the
+                // JUMP_FORWARD will never be called. We create a deopt record, however, so the super instruction is
+                // restored in case of a deopt
+                unsigned char prev_cache_size = get_size_byte(_PyCode_GetCode(frame), arg_chain_start);
+                _Py_CODEUNIT *predecessor = _PyCode_CODE(_PyFrame_GetCode(frame)) + arg_chain_start - prev_cache_size - 1;
+                if (predecessor->op.code == LOAD_FAST_LOAD_FAST)
+                {
+                    PyExternalDeoptInfo *pred_deopt_info = _PyExternal_NewDeoptInfo(predecessor, frame);
+                    chain_start_deopt_info->child = pred_deopt_info;
+                    predecessor->op.code = LOAD_FAST;
+                }
+            }
+
+            parent_deopt_info->child = chain_start_deopt_info;
+            consuming_instruction_offset = arg_chain_start;
+        }
+    }
+}
+
+// located in ceval.c
+void PyExternal_SetCodeHandler(int slot, PyExternal_CodeHandler handler);
+
+
+int
+_PyExternal_IsDeoptInfoValid(_PyInterpreterFrame* frame) {
+    PyExternalDeoptInfo *current = _PyFrame_GetCode(frame)->co_deopt_info_head;
+    while (current != NULL) {
+        if (current->next) {
+            assert(current->next->prev == current);
+        }
+        // TODO: if between any two replaced instructions there were non-replaced instructions,
+        // we need to undo their stack effect here. We don't support this case in _PyExternal_SkipArgSetup yet though.
+        assert(current->position);
+        assert(_PyExternal_GetDeoptInfo(current->position, frame) == current);
+        current = current->next;
+    }
+
+    return 1;
+}
+
+_Py_CODEUNIT*
+_PyExternal_Deoptimize(const _Py_CODEUNIT *instr, _PyInterpreterFrame* frame) {
+    PyExternalDeoptInfo *current = _PyExternal_GetDeoptInfo(instr, frame);
+    _Py_CODEUNIT *replay_from;
+    do {
+        *current->position = current->orig_instr;
+        replay_from = current->position;
+        PyExternalDeoptInfo *previous = current;
+        current = current->child;
+        _PyExternal_DropDeoptInfo(previous, frame);
+    } while (current != NULL);
+
+    assert(replay_from);
+    if (replay_from->op.code == LOAD_FAST_LOAD_FAST) {
+        // we replaced the super instruction only to reach the second instruction
+        // replay from this second instruction
+        replay_from += 1;
+    }
+
+    return replay_from;
+}
+
+
+static int PyExternal_SpecializeInstruction(_Py_CODEUNIT *instr, int slot, PyExternal_CodeHandler new_handler, void *external_cache_pointer)
+{
+    PyThreadState *tstate = PyThreadState_Get();
+    _PyInterpreterFrame *frame = tstate->current_frame;
+    PyExternal_SetCodeHandler(slot, new_handler);
+    _PyExternal_NewDeoptInfo(instr, frame);
+    uint8_t orig_opcode = _PyOpcode_Deopt[instr->op.code];
+    switch (orig_opcode)
+    {
+    case BINARY_OP:
+        {
+            instr->op.code = BINARY_OP_EXTERNAL;
+            _PyBinaryOpCache *cache = (_PyBinaryOpCache *)(instr + 1);
+            memcpy(cache->external_cache_pointer, &external_cache_pointer, sizeof(void*));
+            break;
+        }
+    case CALL:
+        {
+            instr->op.code = CALL_EXTERNAL;
+            _PyCallCache *cache = (_PyCallCache *)(instr + 1);
+            memcpy(cache->external_cache_pointer, &external_cache_pointer, sizeof(void*));
+            break;
+        }
+    case BINARY_SUBSCR:
+        {
+            instr->op.code = BINARY_SUBSCR_EXTERNAL;
+            _PyBinarySubscrCache *cache = (_PyBinarySubscrCache *)(instr + 1);
+            memcpy(cache->external_cache_pointer, &external_cache_pointer, sizeof(void*));
+            break;
+        }
+    default:
+        {
+            raise(SIGTRAP);
+        }
+    }
+    instr->op.arg = slot;
+    return 0;
+}
+
+int PyExternal_SpecializeChain(_Py_CODEUNIT *instr, PyObject **stack_pointer, int slot, PyExternal_CodeHandler new_handler,
+    unsigned char unused_args_bitset, void *external_cache_pointer)
+{
+    PyThreadState *tstate = PyThreadState_Get();
+    _PyInterpreterFrame *frame = tstate->current_frame;
+    int result = PyExternal_SpecializeInstruction(instr, slot, new_handler, external_cache_pointer);
+    if (result < 0)
+    {
+        return result;
+    }
+    _PyExternal_SkipArgSetup(unused_args_bitset, instr, stack_pointer, frame);
+    return 0;
+}
+
+int PyExternal_IsConstant(_Py_CODEUNIT *instr, PyObject **stack_pointer, int stack_position)
+{
+    PyThreadState *tstate = PyThreadState_Get();
+    _PyInterpreterFrame *frame = tstate->current_frame;
+    Py_ssize_t instruction_offset;
+    Py_ssize_t simulated_stack_size = (int) (stack_pointer - _PyFrame_Stackbase(frame));;
+    Py_ssize_t consuming_instruction_offset = instr - _PyCode_CODE(_PyFrame_GetCode(frame));
+    _PyExternal_FindStackposOriginator(frame, stack_position, consuming_instruction_offset,  &instruction_offset, &simulated_stack_size);
+    if (instruction_offset < 0)
+    {
+        return 0;
+    }
+    return _Py_GetBaseOpcode(_PyCode_GetCode(frame), instruction_offset) == LOAD_CONST;
+    return 0;
+}
+
+void
+PyExternal_SetSpecializer(PyExternalSpecializer *specializer) {
+    external_specializer = specializer;
+    specializer->SpecializeInstruction = PyExternal_SpecializeInstruction;
+    specializer->SpecializeChain = PyExternal_SpecializeChain;
+    specializer->IsOperandConstant = PyExternal_IsConstant;
+}
+
+int
+_PyExternal_TrySpecialize(_Py_CODEUNIT *instr, PyObject ***stack_pointer, _PyCache *cache) {
+    if (_PyOpcode_Deopt[instr->op.code] != instr->op.code) {
+        // the instruction was already specialized
+        return 0;
+    }
+
+    if (external_specializer && external_specializer->TrySpecialization) {
+        int should_rewrite = getenv("CMLQ_REWRITE") != NULL;
+        if (!should_rewrite) {
+            return 0;
+        }
+
+        int result = external_specializer->TrySpecialization(instr, stack_pointer);
+
+        if (result) {
+            cache->counter = adaptive_counter_cooldown().as_counter;
+            return result;
+        }
+    }
+
+    // don't apply a counter backoff here, it was already applied by the internal specialization attempt
+    return 0;
+}
+
+void
+_PyExternal_FunctionEnd(_PyInterpreterFrame* frame) {
+    if (external_specializer) {
+        int should_rewrite = getenv("CMLQ_REWRITE") != NULL;
+        if (!should_rewrite) {
+            return;
+        }
+
+        if (_PyFrame_GetCode(frame)->co_deopt_info_head && external_specializer && external_specializer->FunctionEnd) {
+            PyExternalDeoptInfo* current = _PyFrame_GetCode(frame)->co_deopt_info_head;
+            while (current != NULL) {
+                void* external_cache_pointer = NULL;
+#define EXTRACT_POINTER_FROM_CACHE(TYPE) \
+    POINTER_FROM_ARRAY(((TYPE *)(current->position + 1))->external_cache_pointer);
+                switch (current->position->op.code) {
+                case BINARY_OP_EXTERNAL:
+                    {
+                        external_cache_pointer = EXTRACT_POINTER_FROM_CACHE(_PyBinaryOpCache);
+                        break;
+                    }
+                case CALL_EXTERNAL:
+                    {
+                        external_cache_pointer = EXTRACT_POINTER_FROM_CACHE(_PyCallCache);
+                        break;
+                    }
+                case BINARY_SUBSCR_EXTERNAL:
+                    {
+                        external_cache_pointer = EXTRACT_POINTER_FROM_CACHE(_PyBinarySubscrCache);
+                        break;
+                    }
+                case JUMP_FORWARD:
+                case LOAD_FAST:
+                    {
+                        // from optimized chains and split super instructions
+                        break;
+                    }
+                default:
+                    {
+                        raise(SIGTRAP);
+                    }
+                }
+                if (external_cache_pointer != NULL) {
+                    external_specializer->FunctionEnd(current->position, external_cache_pointer);
+                }
+                current = current->next;
+            }
+#undef EXTRACT_POINTER_FROM_CACHE
+        }
+    }
+}

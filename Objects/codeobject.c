@@ -518,6 +518,8 @@ init_code(PyCodeObject *co, struct _PyCodeConstructor *con)
         entry_point++;
     }
     co->_co_firsttraceable = entry_point;
+    co->co_size_table = PyBytes_FromStringAndSize(NULL, Py_SIZE(co));
+    co->co_deopt_info_head = NULL;
     _PyCode_Quicken(co);
     notify_code_watchers(PY_CODE_EVENT_CREATE, co);
 }

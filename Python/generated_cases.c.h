@@ -115,9 +115,14 @@
                 uint16_t counter = read_u16(&this_instr[1].cache);
                 (void)counter;
                 #if ENABLE_SPECIALIZATION
+                _PyBinaryOpCache *cache = (_PyBinaryOpCache *)next_instr;
                 if (ADAPTIVE_COUNTER_TRIGGERS(counter)) {
                     next_instr = this_instr;
                     _Py_Specialize_BinaryOp(lhs, rhs, next_instr, oparg, LOCALS_ARRAY);
+                    int result = _PyExternal_TrySpecialize(next_instr,&stack_pointer,(_PyCache *)cache);
+                    if(result){
+                        oparg = next_instr->op.arg;
+                    }
                     DISPATCH_SAME_OPARG();
                 }
                 STAT_INC(BINARY_OP, deferred);
@@ -141,9 +146,9 @@
 
         TARGET(BINARY_OP_ADD_FLOAT) {
             frame->instr_ptr = next_instr;
-            next_instr += 2;
+            next_instr += 6;
             INSTRUCTION_STATS(BINARY_OP_ADD_FLOAT);
-            static_assert(INLINE_CACHE_ENTRIES_BINARY_OP == 1, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_BINARY_OP == 5, "incorrect cache size");
             PyObject *right;
             PyObject *left;
             PyObject *res;
@@ -155,6 +160,7 @@
                 DEOPT_IF(!PyFloat_CheckExact(right), BINARY_OP);
             }
             /* Skip 1 cache entry */
+            /* Skip 4 cache entries */
             // _BINARY_OP_ADD_FLOAT
             {
                 STAT_INC(BINARY_OP, hit);
@@ -170,9 +176,9 @@
 
         TARGET(BINARY_OP_ADD_INT) {
             frame->instr_ptr = next_instr;
-            next_instr += 2;
+            next_instr += 6;
             INSTRUCTION_STATS(BINARY_OP_ADD_INT);
-            static_assert(INLINE_CACHE_ENTRIES_BINARY_OP == 1, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_BINARY_OP == 5, "incorrect cache size");
             PyObject *right;
             PyObject *left;
             PyObject *res;
@@ -184,6 +190,7 @@
                 DEOPT_IF(!PyLong_CheckExact(right), BINARY_OP);
             }
             /* Skip 1 cache entry */
+            /* Skip 4 cache entries */
             // _BINARY_OP_ADD_INT
             {
                 STAT_INC(BINARY_OP, hit);
@@ -199,9 +206,9 @@
 
         TARGET(BINARY_OP_ADD_UNICODE) {
             frame->instr_ptr = next_instr;
-            next_instr += 2;
+            next_instr += 6;
             INSTRUCTION_STATS(BINARY_OP_ADD_UNICODE);
-            static_assert(INLINE_CACHE_ENTRIES_BINARY_OP == 1, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_BINARY_OP == 5, "incorrect cache size");
             PyObject *right;
             PyObject *left;
             PyObject *res;
@@ -213,6 +220,7 @@
                 DEOPT_IF(!PyUnicode_CheckExact(right), BINARY_OP);
             }
             /* Skip 1 cache entry */
+            /* Skip 4 cache entries */
             // _BINARY_OP_ADD_UNICODE
             {
                 STAT_INC(BINARY_OP, hit);
@@ -228,9 +236,9 @@
 
         TARGET(BINARY_OP_INPLACE_ADD_UNICODE) {
             frame->instr_ptr = next_instr;
-            next_instr += 2;
+            next_instr += 6;
             INSTRUCTION_STATS(BINARY_OP_INPLACE_ADD_UNICODE);
-            static_assert(INLINE_CACHE_ENTRIES_BINARY_OP == 1, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_BINARY_OP == 5, "incorrect cache size");
             PyObject *right;
             PyObject *left;
             // _GUARD_BOTH_UNICODE
@@ -241,6 +249,7 @@
                 DEOPT_IF(!PyUnicode_CheckExact(right), BINARY_OP);
             }
             /* Skip 1 cache entry */
+            /* Skip 4 cache entries */
             // _BINARY_OP_INPLACE_ADD_UNICODE
             {
                 assert(next_instr->op.code == STORE_FAST);
@@ -273,9 +282,9 @@
 
         TARGET(BINARY_OP_MULTIPLY_FLOAT) {
             frame->instr_ptr = next_instr;
-            next_instr += 2;
+            next_instr += 6;
             INSTRUCTION_STATS(BINARY_OP_MULTIPLY_FLOAT);
-            static_assert(INLINE_CACHE_ENTRIES_BINARY_OP == 1, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_BINARY_OP == 5, "incorrect cache size");
             PyObject *right;
             PyObject *left;
             PyObject *res;
@@ -287,6 +296,7 @@
                 DEOPT_IF(!PyFloat_CheckExact(right), BINARY_OP);
             }
             /* Skip 1 cache entry */
+            /* Skip 4 cache entries */
             // _BINARY_OP_MULTIPLY_FLOAT
             {
                 STAT_INC(BINARY_OP, hit);
@@ -302,9 +312,9 @@
 
         TARGET(BINARY_OP_MULTIPLY_INT) {
             frame->instr_ptr = next_instr;
-            next_instr += 2;
+            next_instr += 6;
             INSTRUCTION_STATS(BINARY_OP_MULTIPLY_INT);
-            static_assert(INLINE_CACHE_ENTRIES_BINARY_OP == 1, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_BINARY_OP == 5, "incorrect cache size");
             PyObject *right;
             PyObject *left;
             PyObject *res;
@@ -316,6 +326,7 @@
                 DEOPT_IF(!PyLong_CheckExact(right), BINARY_OP);
             }
             /* Skip 1 cache entry */
+            /* Skip 4 cache entries */
             // _BINARY_OP_MULTIPLY_INT
             {
                 STAT_INC(BINARY_OP, hit);
@@ -331,9 +342,9 @@
 
         TARGET(BINARY_OP_SUBTRACT_FLOAT) {
             frame->instr_ptr = next_instr;
-            next_instr += 2;
+            next_instr += 6;
             INSTRUCTION_STATS(BINARY_OP_SUBTRACT_FLOAT);
-            static_assert(INLINE_CACHE_ENTRIES_BINARY_OP == 1, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_BINARY_OP == 5, "incorrect cache size");
             PyObject *right;
             PyObject *left;
             PyObject *res;
@@ -345,6 +356,7 @@
                 DEOPT_IF(!PyFloat_CheckExact(right), BINARY_OP);
             }
             /* Skip 1 cache entry */
+            /* Skip 4 cache entries */
             // _BINARY_OP_SUBTRACT_FLOAT
             {
                 STAT_INC(BINARY_OP, hit);
@@ -360,9 +372,9 @@
 
         TARGET(BINARY_OP_SUBTRACT_INT) {
             frame->instr_ptr = next_instr;
-            next_instr += 2;
+            next_instr += 6;
             INSTRUCTION_STATS(BINARY_OP_SUBTRACT_INT);
-            static_assert(INLINE_CACHE_ENTRIES_BINARY_OP == 1, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_BINARY_OP == 5, "incorrect cache size");
             PyObject *right;
             PyObject *left;
             PyObject *res;
@@ -374,6 +386,7 @@
                 DEOPT_IF(!PyLong_CheckExact(right), BINARY_OP);
             }
             /* Skip 1 cache entry */
+            /* Skip 4 cache entries */
             // _BINARY_OP_SUBTRACT_INT
             {
                 STAT_INC(BINARY_OP, hit);
@@ -417,10 +430,10 @@
 
         TARGET(BINARY_SUBSCR) {
             frame->instr_ptr = next_instr;
-            next_instr += 2;
+            next_instr += 6;
             INSTRUCTION_STATS(BINARY_SUBSCR);
             PREDICTED(BINARY_SUBSCR);
-            _Py_CODEUNIT *this_instr = next_instr - 2;
+            _Py_CODEUNIT *this_instr = next_instr - 6;
             (void)this_instr;
             PyObject *sub;
             PyObject *container;
@@ -432,15 +445,21 @@
                 uint16_t counter = read_u16(&this_instr[1].cache);
                 (void)counter;
                 #if ENABLE_SPECIALIZATION
+                _PyBinarySubscrCache *cache = (_PyBinarySubscrCache *)next_instr;
                 if (ADAPTIVE_COUNTER_TRIGGERS(counter)) {
                     next_instr = this_instr;
                     _Py_Specialize_BinarySubscr(container, sub, next_instr);
+                    int result = _PyExternal_TrySpecialize(next_instr,&stack_pointer,(_PyCache *)cache);
+                    if(result){
+                        oparg = next_instr->op.arg;
+                    }
                     DISPATCH_SAME_OPARG();
                 }
                 STAT_INC(BINARY_SUBSCR, deferred);
                 ADVANCE_ADAPTIVE_COUNTER(this_instr[1].counter);
                 #endif  /* ENABLE_SPECIALIZATION */
             }
+            /* Skip 4 cache entries */
             // _BINARY_SUBSCR
             {
                 res = PyObject_GetItem(container, sub);
@@ -455,13 +474,14 @@
 
         TARGET(BINARY_SUBSCR_DICT) {
             frame->instr_ptr = next_instr;
-            next_instr += 2;
+            next_instr += 6;
             INSTRUCTION_STATS(BINARY_SUBSCR_DICT);
-            static_assert(INLINE_CACHE_ENTRIES_BINARY_SUBSCR == 1, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_BINARY_SUBSCR == 5, "incorrect cache size");
             PyObject *sub;
             PyObject *dict;
             PyObject *res;
             /* Skip 1 cache entry */
+            /* Skip 4 cache entries */
             sub = stack_pointer[-1];
             dict = stack_pointer[-2];
             DEOPT_IF(!PyDict_CheckExact(dict), BINARY_SUBSCR);
@@ -481,12 +501,13 @@
 
         TARGET(BINARY_SUBSCR_GETITEM) {
             _Py_CODEUNIT *this_instr = frame->instr_ptr = next_instr;
-            next_instr += 2;
+            next_instr += 6;
             INSTRUCTION_STATS(BINARY_SUBSCR_GETITEM);
-            static_assert(INLINE_CACHE_ENTRIES_BINARY_SUBSCR == 1, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_BINARY_SUBSCR == 5, "incorrect cache size");
             PyObject *sub;
             PyObject *container;
             /* Skip 1 cache entry */
+            /* Skip 4 cache entries */
             sub = stack_pointer[-1];
             container = stack_pointer[-2];
             DEOPT_IF(tstate->interp->eval_frame, BINARY_SUBSCR);
@@ -514,13 +535,14 @@
 
         TARGET(BINARY_SUBSCR_LIST_INT) {
             frame->instr_ptr = next_instr;
-            next_instr += 2;
+            next_instr += 6;
             INSTRUCTION_STATS(BINARY_SUBSCR_LIST_INT);
-            static_assert(INLINE_CACHE_ENTRIES_BINARY_SUBSCR == 1, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_BINARY_SUBSCR == 5, "incorrect cache size");
             PyObject *sub;
             PyObject *list;
             PyObject *res;
             /* Skip 1 cache entry */
+            /* Skip 4 cache entries */
             sub = stack_pointer[-1];
             list = stack_pointer[-2];
             DEOPT_IF(!PyLong_CheckExact(sub), BINARY_SUBSCR);
@@ -542,13 +564,14 @@
 
         TARGET(BINARY_SUBSCR_STR_INT) {
             frame->instr_ptr = next_instr;
-            next_instr += 2;
+            next_instr += 6;
             INSTRUCTION_STATS(BINARY_SUBSCR_STR_INT);
-            static_assert(INLINE_CACHE_ENTRIES_BINARY_SUBSCR == 1, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_BINARY_SUBSCR == 5, "incorrect cache size");
             PyObject *sub;
             PyObject *str;
             PyObject *res;
             /* Skip 1 cache entry */
+            /* Skip 4 cache entries */
             sub = stack_pointer[-1];
             str = stack_pointer[-2];
             DEOPT_IF(!PyLong_CheckExact(sub), BINARY_SUBSCR);
@@ -570,13 +593,14 @@
 
         TARGET(BINARY_SUBSCR_TUPLE_INT) {
             frame->instr_ptr = next_instr;
-            next_instr += 2;
+            next_instr += 6;
             INSTRUCTION_STATS(BINARY_SUBSCR_TUPLE_INT);
-            static_assert(INLINE_CACHE_ENTRIES_BINARY_SUBSCR == 1, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_BINARY_SUBSCR == 5, "incorrect cache size");
             PyObject *sub;
             PyObject *tuple;
             PyObject *res;
             /* Skip 1 cache entry */
+            /* Skip 4 cache entries */
             sub = stack_pointer[-1];
             tuple = stack_pointer[-2];
             DEOPT_IF(!PyLong_CheckExact(sub), BINARY_SUBSCR);
@@ -743,10 +767,10 @@
 
         TARGET(CALL) {
             frame->instr_ptr = next_instr;
-            next_instr += 4;
+            next_instr += 8;
             INSTRUCTION_STATS(CALL);
             PREDICTED(CALL);
-            _Py_CODEUNIT *this_instr = next_instr - 4;
+            _Py_CODEUNIT *this_instr = next_instr - 8;
             (void)this_instr;
             PyObject **args;
             PyObject *self_or_null;
@@ -760,9 +784,14 @@
                 uint16_t counter = read_u16(&this_instr[1].cache);
                 (void)counter;
                 #if ENABLE_SPECIALIZATION
+                _PyCallCache *cache = (_PyCallCache *)next_instr;
                 if (ADAPTIVE_COUNTER_TRIGGERS(counter)) {
                     next_instr = this_instr;
                     _Py_Specialize_Call(callable, next_instr, oparg + (self_or_null != NULL));
+                    int result = _PyExternal_TrySpecialize(next_instr,&stack_pointer,(_PyCache *)cache);
+                    if(result){
+                        oparg = next_instr->op.arg;
+                    }
                     DISPATCH_SAME_OPARG();
                 }
                 STAT_INC(CALL, deferred);
@@ -770,6 +799,7 @@
                 #endif  /* ENABLE_SPECIALIZATION */
             }
             /* Skip 2 cache entries */
+            /* Skip 4 cache entries */
             // _CALL
             {
                 // oparg counts all of the args, but *not* self:
@@ -849,14 +879,15 @@
 
         TARGET(CALL_ALLOC_AND_ENTER_INIT) {
             _Py_CODEUNIT *this_instr = frame->instr_ptr = next_instr;
-            next_instr += 4;
+            next_instr += 8;
             INSTRUCTION_STATS(CALL_ALLOC_AND_ENTER_INIT);
-            static_assert(INLINE_CACHE_ENTRIES_CALL == 3, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_CALL == 7, "incorrect cache size");
             PyObject **args;
             PyObject *null;
             PyObject *callable;
             /* Skip 1 cache entry */
             /* Skip 2 cache entries */
+            /* Skip 4 cache entries */
             args = &stack_pointer[-oparg];
             null = stack_pointer[-1 - oparg];
             callable = stack_pointer[-2 - oparg];
@@ -914,9 +945,9 @@
 
         TARGET(CALL_BOUND_METHOD_EXACT_ARGS) {
             _Py_CODEUNIT *this_instr = frame->instr_ptr = next_instr;
-            next_instr += 4;
+            next_instr += 8;
             INSTRUCTION_STATS(CALL_BOUND_METHOD_EXACT_ARGS);
-            static_assert(INLINE_CACHE_ENTRIES_CALL == 3, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_CALL == 7, "incorrect cache size");
             PyObject *null;
             PyObject *callable;
             PyObject *func;
@@ -925,6 +956,7 @@
             PyObject **args;
             _PyInterpreterFrame *new_frame;
             /* Skip 1 cache entry */
+            /* Skip 4 cache entries */
             // _CHECK_PEP_523
             {
                 DEOPT_IF(tstate->interp->eval_frame, CALL);
@@ -949,7 +981,7 @@
             self_or_null = self;
             callable = func;
             {
-                uint32_t func_version = read_u32(&this_instr[2].cache);
+                uint32_t func_version = read_u32(&this_instr[6].cache);
                 DEOPT_IF(!PyFunction_Check(callable), CALL);
                 PyFunctionObject *func = (PyFunctionObject *)callable;
                 DEOPT_IF(func->func_version != func_version, CALL);
@@ -1006,9 +1038,9 @@
 
         TARGET(CALL_BOUND_METHOD_GENERAL) {
             _Py_CODEUNIT *this_instr = frame->instr_ptr = next_instr;
-            next_instr += 4;
+            next_instr += 8;
             INSTRUCTION_STATS(CALL_BOUND_METHOD_GENERAL);
-            static_assert(INLINE_CACHE_ENTRIES_CALL == 3, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_CALL == 7, "incorrect cache size");
             PyObject *null;
             PyObject *callable;
             PyObject *method;
@@ -1017,6 +1049,7 @@
             PyObject *self_or_null;
             _PyInterpreterFrame *new_frame;
             /* Skip 1 cache entry */
+            /* Skip 4 cache entries */
             // _CHECK_PEP_523
             {
                 DEOPT_IF(tstate->interp->eval_frame, CALL);
@@ -1025,7 +1058,7 @@
             null = stack_pointer[-1 - oparg];
             callable = stack_pointer[-2 - oparg];
             {
-                uint32_t func_version = read_u32(&this_instr[2].cache);
+                uint32_t func_version = read_u32(&this_instr[6].cache);
                 DEOPT_IF(Py_TYPE(callable) != &PyMethod_Type, CALL);
                 PyObject *func = ((PyMethodObject *)callable)->im_func;
                 DEOPT_IF(!PyFunction_Check(func), CALL);
@@ -1097,15 +1130,16 @@
 
         TARGET(CALL_BUILTIN_CLASS) {
             frame->instr_ptr = next_instr;
-            next_instr += 4;
+            next_instr += 8;
             INSTRUCTION_STATS(CALL_BUILTIN_CLASS);
-            static_assert(INLINE_CACHE_ENTRIES_CALL == 3, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_CALL == 7, "incorrect cache size");
             PyObject **args;
             PyObject *self_or_null;
             PyObject *callable;
             PyObject *res;
             /* Skip 1 cache entry */
             /* Skip 2 cache entries */
+            /* Skip 4 cache entries */
             // _CALL_BUILTIN_CLASS
             args = &stack_pointer[-oparg];
             self_or_null = stack_pointer[-1 - oparg];
@@ -1139,15 +1173,16 @@
 
         TARGET(CALL_BUILTIN_FAST) {
             frame->instr_ptr = next_instr;
-            next_instr += 4;
+            next_instr += 8;
             INSTRUCTION_STATS(CALL_BUILTIN_FAST);
-            static_assert(INLINE_CACHE_ENTRIES_CALL == 3, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_CALL == 7, "incorrect cache size");
             PyObject **args;
             PyObject *self_or_null;
             PyObject *callable;
             PyObject *res;
             /* Skip 1 cache entry */
             /* Skip 2 cache entries */
+            /* Skip 4 cache entries */
             // _CALL_BUILTIN_FAST
             args = &stack_pointer[-oparg];
             self_or_null = stack_pointer[-1 - oparg];
@@ -1187,15 +1222,16 @@
 
         TARGET(CALL_BUILTIN_FAST_WITH_KEYWORDS) {
             frame->instr_ptr = next_instr;
-            next_instr += 4;
+            next_instr += 8;
             INSTRUCTION_STATS(CALL_BUILTIN_FAST_WITH_KEYWORDS);
-            static_assert(INLINE_CACHE_ENTRIES_CALL == 3, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_CALL == 7, "incorrect cache size");
             PyObject **args;
             PyObject *self_or_null;
             PyObject *callable;
             PyObject *res;
             /* Skip 1 cache entry */
             /* Skip 2 cache entries */
+            /* Skip 4 cache entries */
             // _CALL_BUILTIN_FAST_WITH_KEYWORDS
             args = &stack_pointer[-oparg];
             self_or_null = stack_pointer[-1 - oparg];
@@ -1234,15 +1270,16 @@
 
         TARGET(CALL_BUILTIN_O) {
             frame->instr_ptr = next_instr;
-            next_instr += 4;
+            next_instr += 8;
             INSTRUCTION_STATS(CALL_BUILTIN_O);
-            static_assert(INLINE_CACHE_ENTRIES_CALL == 3, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_CALL == 7, "incorrect cache size");
             PyObject **args;
             PyObject *self_or_null;
             PyObject *callable;
             PyObject *res;
             /* Skip 1 cache entry */
             /* Skip 2 cache entries */
+            /* Skip 4 cache entries */
             // _CALL_BUILTIN_O
             args = &stack_pointer[-oparg];
             self_or_null = stack_pointer[-1 - oparg];
@@ -1401,15 +1438,16 @@
 
         TARGET(CALL_ISINSTANCE) {
             frame->instr_ptr = next_instr;
-            next_instr += 4;
+            next_instr += 8;
             INSTRUCTION_STATS(CALL_ISINSTANCE);
-            static_assert(INLINE_CACHE_ENTRIES_CALL == 3, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_CALL == 7, "incorrect cache size");
             PyObject **args;
             PyObject *self_or_null;
             PyObject *callable;
             PyObject *res;
             /* Skip 1 cache entry */
             /* Skip 2 cache entries */
+            /* Skip 4 cache entries */
             args = &stack_pointer[-oparg];
             self_or_null = stack_pointer[-1 - oparg];
             callable = stack_pointer[-2 - oparg];
@@ -1535,15 +1573,16 @@
 
         TARGET(CALL_LEN) {
             frame->instr_ptr = next_instr;
-            next_instr += 4;
+            next_instr += 8;
             INSTRUCTION_STATS(CALL_LEN);
-            static_assert(INLINE_CACHE_ENTRIES_CALL == 3, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_CALL == 7, "incorrect cache size");
             PyObject **args;
             PyObject *self_or_null;
             PyObject *callable;
             PyObject *res;
             /* Skip 1 cache entry */
             /* Skip 2 cache entries */
+            /* Skip 4 cache entries */
             args = &stack_pointer[-oparg];
             self_or_null = stack_pointer[-1 - oparg];
             callable = stack_pointer[-2 - oparg];
@@ -1576,14 +1615,15 @@
 
         TARGET(CALL_LIST_APPEND) {
             frame->instr_ptr = next_instr;
-            next_instr += 4;
+            next_instr += 8;
             INSTRUCTION_STATS(CALL_LIST_APPEND);
-            static_assert(INLINE_CACHE_ENTRIES_CALL == 3, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_CALL == 7, "incorrect cache size");
             PyObject *arg;
             PyObject *self;
             PyObject *callable;
             /* Skip 1 cache entry */
             /* Skip 2 cache entries */
+            /* Skip 4 cache entries */
             arg = stack_pointer[-1];
             self = stack_pointer[-2];
             callable = stack_pointer[-3];
@@ -1607,15 +1647,16 @@
 
         TARGET(CALL_METHOD_DESCRIPTOR_FAST) {
             frame->instr_ptr = next_instr;
-            next_instr += 4;
+            next_instr += 8;
             INSTRUCTION_STATS(CALL_METHOD_DESCRIPTOR_FAST);
-            static_assert(INLINE_CACHE_ENTRIES_CALL == 3, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_CALL == 7, "incorrect cache size");
             PyObject **args;
             PyObject *self_or_null;
             PyObject *callable;
             PyObject *res;
             /* Skip 1 cache entry */
             /* Skip 2 cache entries */
+            /* Skip 4 cache entries */
             // _CALL_METHOD_DESCRIPTOR_FAST
             args = &stack_pointer[-oparg];
             self_or_null = stack_pointer[-1 - oparg];
@@ -1657,15 +1698,16 @@
 
         TARGET(CALL_METHOD_DESCRIPTOR_FAST_WITH_KEYWORDS) {
             frame->instr_ptr = next_instr;
-            next_instr += 4;
+            next_instr += 8;
             INSTRUCTION_STATS(CALL_METHOD_DESCRIPTOR_FAST_WITH_KEYWORDS);
-            static_assert(INLINE_CACHE_ENTRIES_CALL == 3, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_CALL == 7, "incorrect cache size");
             PyObject **args;
             PyObject *self_or_null;
             PyObject *callable;
             PyObject *res;
             /* Skip 1 cache entry */
             /* Skip 2 cache entries */
+            /* Skip 4 cache entries */
             // _CALL_METHOD_DESCRIPTOR_FAST_WITH_KEYWORDS
             args = &stack_pointer[-oparg];
             self_or_null = stack_pointer[-1 - oparg];
@@ -1707,15 +1749,16 @@
 
         TARGET(CALL_METHOD_DESCRIPTOR_NOARGS) {
             frame->instr_ptr = next_instr;
-            next_instr += 4;
+            next_instr += 8;
             INSTRUCTION_STATS(CALL_METHOD_DESCRIPTOR_NOARGS);
-            static_assert(INLINE_CACHE_ENTRIES_CALL == 3, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_CALL == 7, "incorrect cache size");
             PyObject **args;
             PyObject *self_or_null;
             PyObject *callable;
             PyObject *res;
             /* Skip 1 cache entry */
             /* Skip 2 cache entries */
+            /* Skip 4 cache entries */
             // _CALL_METHOD_DESCRIPTOR_NOARGS
             args = &stack_pointer[-oparg];
             self_or_null = stack_pointer[-1 - oparg];
@@ -1757,15 +1800,16 @@
 
         TARGET(CALL_METHOD_DESCRIPTOR_O) {
             frame->instr_ptr = next_instr;
-            next_instr += 4;
+            next_instr += 8;
             INSTRUCTION_STATS(CALL_METHOD_DESCRIPTOR_O);
-            static_assert(INLINE_CACHE_ENTRIES_CALL == 3, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_CALL == 7, "incorrect cache size");
             PyObject **args;
             PyObject *self_or_null;
             PyObject *callable;
             PyObject *res;
             /* Skip 1 cache entry */
             /* Skip 2 cache entries */
+            /* Skip 4 cache entries */
             // _CALL_METHOD_DESCRIPTOR_O
             args = &stack_pointer[-oparg];
             self_or_null = stack_pointer[-1 - oparg];
@@ -1808,15 +1852,16 @@
 
         TARGET(CALL_NON_PY_GENERAL) {
             frame->instr_ptr = next_instr;
-            next_instr += 4;
+            next_instr += 8;
             INSTRUCTION_STATS(CALL_NON_PY_GENERAL);
-            static_assert(INLINE_CACHE_ENTRIES_CALL == 3, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_CALL == 7, "incorrect cache size");
             PyObject *callable;
             PyObject **args;
             PyObject *self_or_null;
             PyObject *res;
             /* Skip 1 cache entry */
             /* Skip 2 cache entries */
+            /* Skip 4 cache entries */
             // _CHECK_IS_NOT_PY_CALLABLE
             callable = stack_pointer[-2 - oparg];
             {
@@ -1858,14 +1903,15 @@
 
         TARGET(CALL_PY_EXACT_ARGS) {
             _Py_CODEUNIT *this_instr = frame->instr_ptr = next_instr;
-            next_instr += 4;
+            next_instr += 8;
             INSTRUCTION_STATS(CALL_PY_EXACT_ARGS);
-            static_assert(INLINE_CACHE_ENTRIES_CALL == 3, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_CALL == 7, "incorrect cache size");
             PyObject *self_or_null;
             PyObject *callable;
             PyObject **args;
             _PyInterpreterFrame *new_frame;
             /* Skip 1 cache entry */
+            /* Skip 4 cache entries */
             // _CHECK_PEP_523
             {
                 DEOPT_IF(tstate->interp->eval_frame, CALL);
@@ -1874,7 +1920,7 @@
             self_or_null = stack_pointer[-1 - oparg];
             callable = stack_pointer[-2 - oparg];
             {
-                uint32_t func_version = read_u32(&this_instr[2].cache);
+                uint32_t func_version = read_u32(&this_instr[6].cache);
                 DEOPT_IF(!PyFunction_Check(callable), CALL);
                 PyFunctionObject *func = (PyFunctionObject *)callable;
                 DEOPT_IF(func->func_version != func_version, CALL);
@@ -1931,14 +1977,15 @@
 
         TARGET(CALL_PY_GENERAL) {
             _Py_CODEUNIT *this_instr = frame->instr_ptr = next_instr;
-            next_instr += 4;
+            next_instr += 8;
             INSTRUCTION_STATS(CALL_PY_GENERAL);
-            static_assert(INLINE_CACHE_ENTRIES_CALL == 3, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_CALL == 7, "incorrect cache size");
             PyObject *callable;
             PyObject **args;
             PyObject *self_or_null;
             _PyInterpreterFrame *new_frame;
             /* Skip 1 cache entry */
+            /* Skip 4 cache entries */
             // _CHECK_PEP_523
             {
                 DEOPT_IF(tstate->interp->eval_frame, CALL);
@@ -1946,7 +1993,7 @@
             // _CHECK_FUNCTION_VERSION
             callable = stack_pointer[-2 - oparg];
             {
-                uint32_t func_version = read_u32(&this_instr[2].cache);
+                uint32_t func_version = read_u32(&this_instr[6].cache);
                 DEOPT_IF(!PyFunction_Check(callable), CALL);
                 PyFunctionObject *func = (PyFunctionObject *)callable;
                 DEOPT_IF(func->func_version != func_version, CALL);
@@ -2003,15 +2050,16 @@
 
         TARGET(CALL_STR_1) {
             frame->instr_ptr = next_instr;
-            next_instr += 4;
+            next_instr += 8;
             INSTRUCTION_STATS(CALL_STR_1);
-            static_assert(INLINE_CACHE_ENTRIES_CALL == 3, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_CALL == 7, "incorrect cache size");
             PyObject *arg;
             PyObject *null;
             PyObject *callable;
             PyObject *res;
             /* Skip 1 cache entry */
             /* Skip 2 cache entries */
+            /* Skip 4 cache entries */
             // _CALL_STR_1
             arg = stack_pointer[-1];
             null = stack_pointer[-2];
@@ -2036,15 +2084,16 @@
 
         TARGET(CALL_TUPLE_1) {
             frame->instr_ptr = next_instr;
-            next_instr += 4;
+            next_instr += 8;
             INSTRUCTION_STATS(CALL_TUPLE_1);
-            static_assert(INLINE_CACHE_ENTRIES_CALL == 3, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_CALL == 7, "incorrect cache size");
             PyObject *arg;
             PyObject *null;
             PyObject *callable;
             PyObject *res;
             /* Skip 1 cache entry */
             /* Skip 2 cache entries */
+            /* Skip 4 cache entries */
             // _CALL_TUPLE_1
             arg = stack_pointer[-1];
             null = stack_pointer[-2];
@@ -2069,15 +2118,16 @@
 
         TARGET(CALL_TYPE_1) {
             frame->instr_ptr = next_instr;
-            next_instr += 4;
+            next_instr += 8;
             INSTRUCTION_STATS(CALL_TYPE_1);
-            static_assert(INLINE_CACHE_ENTRIES_CALL == 3, "incorrect cache size");
+            static_assert(INLINE_CACHE_ENTRIES_CALL == 7, "incorrect cache size");
             PyObject *arg;
             PyObject *null;
             PyObject *callable;
             PyObject *res;
             /* Skip 1 cache entry */
             /* Skip 2 cache entries */
+            /* Skip 4 cache entries */
             arg = stack_pointer[-1];
             null = stack_pointer[-2];
             callable = stack_pointer[-3];
@@ -2656,7 +2706,7 @@
             DISPATCH();
         }
 
-        TARGET(ENTER_EXECUTOR) {//key point to tier 2
+        TARGET(ENTER_EXECUTOR) {
             _Py_CODEUNIT *this_instr = frame->instr_ptr = next_instr;
             (void)this_instr;
             next_instr += 1;
@@ -3597,7 +3647,7 @@
             DISPATCH();
         }
 
-        TARGET(JUMP_BACKWARD) {// the ONLY bytecode that can tier up(can't find ENTER_EXECUTOR anywhere)
+        TARGET(JUMP_BACKWARD) {
             _Py_CODEUNIT *this_instr = frame->instr_ptr = next_instr;
             (void)this_instr;
             next_instr += 2;
@@ -3616,16 +3666,15 @@
                     oparg >>= 8;
                     start--;
                 }
-                //Begin to create a new executor
                 _PyExecutorObject *executor;
-                int optimized = _PyOptimizer_Optimize(frame, start, stack_pointer, &executor);//Where 'ENTER_EXECUTOR' is inserted
+                int optimized = _PyOptimizer_Optimize(frame, start, stack_pointer, &executor);
                 if (optimized < 0) goto error;
-                if (optimized) { // successful optimization
+                if (optimized) {
                     assert(tstate->previous_executor == NULL);
                     tstate->previous_executor = Py_None;
                     GOTO_TIER_TWO(executor);
                 }
-                else {// no executor created
+                else {
                     this_instr[1].counter = restart_backoff_counter(counter);
                 }
             }
@@ -5197,6 +5246,7 @@
                 assert(frame != &entry_frame);
                 #endif
                 _PyFrame_SetStackPointer(frame, stack_pointer);
+                _PyExternal_FunctionEnd(frame);
                 assert(EMPTY());
                 _Py_LeaveRecursiveCallPy(tstate);
                 // GH-99729: We need to unlink the frame *before* clearing it:
@@ -5254,6 +5304,7 @@
             #endif
             stack_pointer += -1;
             _PyFrame_SetStackPointer(frame, stack_pointer);
+            _PyExternal_FunctionEnd(frame);
             assert(EMPTY());
             _Py_LeaveRecursiveCallPy(tstate);
             // GH-99729: We need to unlink the frame *before* clearing it:

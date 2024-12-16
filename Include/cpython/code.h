@@ -7,7 +7,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
+#include "pycore_codeunit.h"
 /* Count of all local monitoring events */
 #define  _PY_MONITORING_LOCAL_EVENTS 10
 /* Count of all "real" monitoring events (not derived from other events) */
@@ -67,6 +67,45 @@ typedef struct {
     /* The tools that are to be notified for instruction events for the matching code unit */
     uint8_t *per_instruction_tools;
 } _PyCoMonitoringData;
+
+typedef struct _deoptInfo{
+    // if a whole chain of instructions is deoptimized
+    struct _deoptInfo *child;
+    _Py_CODEUNIT orig_instr;
+    _Py_CODEUNIT *position;
+    short data;
+    struct _deoptInfo *next;
+    struct _deoptInfo *prev;
+} PyExternalDeoptInfo;
+
+#ifndef __cplusplus
+typedef int (*PyExternal_CodeHandler)(void *restrict external_cache_pointer, PyObject* restrict ** stack_pointer);
+typedef int (*ExternalSpecializationHook)(_Py_CODEUNIT* old_instr, PyObject ***stack_pointer);
+#else
+typedef int (*PyExternal_CodeHandler)(_Py_CODEUNIT **next_instr, PyObject **stack_pointer);
+typedef int (*ExternalSpecializationHook)(_Py_CODEUNIT *old_instr, PyObject ***stack_pointer);
+#endif
+
+typedef void (*FunctionEndHook)(_Py_CODEUNIT *instr, void* external_cache_pointer);
+typedef int (*SpecializeInstructionPtr)(_Py_CODEUNIT*, int, PyExternal_CodeHandler, void *);
+typedef int (*SpecializeChainPtr)(_Py_CODEUNIT *, PyObject **, int , PyExternal_CodeHandler, unsigned char, void *);
+typedef int (*IsOperandConstantPtr)(_Py_CODEUNIT *, PyObject **, int );
+
+typedef struct _PyExternalSpecializer {
+    ExternalSpecializationHook TrySpecialization;
+    FunctionEndHook FunctionEnd;
+
+    // TODO: workaround until we resolve the mysterious linking performance issue
+    // For some reason a few benchmarks suffer a major performance regression when the numpy module
+    // dynamically resolves the function with the linker. This hack avoids the resolution by the linker and seems to help
+    SpecializeInstructionPtr SpecializeInstruction;
+    SpecializeChainPtr SpecializeChain;
+    IsOperandConstantPtr IsOperandConstant;
+} PyExternalSpecializer;
+
+#define CMLQ_Def    \
+    PyObject *co_size_table;    \
+    PyExternalDeoptInfo *co_deopt_info_head;
 
 // To avoid repeating ourselves in deepfreeze.py, all PyCodeObject members are
 // defined in this macro:
@@ -132,6 +171,7 @@ typedef struct {
     /* Scratch space for extra data relating to the code object.               \
        Type is a void* to keep the format private in codeobject.c to force     \
        people to go through the proper APIs. */                                \
+    CMLQ_Def;                                                                  \
     void *co_extra;                                                            \
     char co_code_adaptive[(SIZE)];                                             \
 }
