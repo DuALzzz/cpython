@@ -26,6 +26,16 @@ def write_opcode_targets(analysis: Analysis, out: CWriter) -> None:
     for name, op in analysis.opmap.items():
         if op < 256:
             targets[op] = f"&&TARGET_{name},\n"
+    """replace unknown_opcode to external_opcode"""
+    replacement_targets = {
+        119: "&&TARGET_CALL_EXTERNAL,\n",
+        120: "&&TARGET_BINARY_OP_EXTERNAL,\n",
+        121: "&&TARGET_BINARY_SUBSCR_EXTERNAL,\n",
+    }
+    for index, replacement in replacement_targets.items():
+        assert targets[index] == "&&_unknown_opcode,\n"
+        targets[index] = replacement
+    
     out.emit("static void *opcode_targets[256] = {\n")
     for target in targets:
         out.emit(target)

@@ -681,6 +681,14 @@ PyExternal_SetCodeHandler(int slot, PyExternal_CodeHandler handler) {
 
 /* _PyEval_EvalFrameDefault() is a *big* function,
  * so consume 3 units of C stack */
+
+static bool should_rewrite(_PyInterpreterFrame *frame) {
+    PyObject *value = _PyDict_GetItemWithError(GLOBALS(), &_Py_ID(__rewrite__));
+    return value && PyObject_IsTrue(value);
+}
+
+#define PC_OFFSET ((next_instr - (_Py_CODEUNIT *)frame->f_code->co_code_adaptive - 1) * 2)
+
 #define PY_EVAL_C_STACK_UNITS 2
 
 PyObject* _Py_HOT_FUNCTION
@@ -788,15 +796,48 @@ resume_frame:
         switch (opcode)
 #endif
         {
-            TARGET(BINARY_OP_EXTERNAL){
+            TARGET(BINARY_OP_EXTERNAL) {
+                _PyBinaryOpCache* cache = (_PyBinaryOpCache*)next_instr;
+                void* external_cache_pointer = POINTER_FROM_ARRAY(cache->external_cache_pointer);
+                int result = external_handlers[oparg](external_cache_pointer, &stack_pointer);
+                if (result == 2) {
+                    unsigned long offset = next_instr - 1 - _PyCode_CODE(_PyFrame_GetCode(frame));
+                    next_instr = _PyExternal_Deoptimize(next_instr - 1, frame);
+                    oparg = next_instr->op.arg;
+                    DISPATCH_SAME_OPARG();
+                }
+                next_instr += INLINE_CACHE_ENTRIES_BINARY_OP;
+                DISPATCH();
+            }
 
+            TARGET(CALL_EXTERNAL) {
+                _PyCallCache *cache = (_PyCallCache *)next_instr;
+                void *external_cache_pointer = POINTER_FROM_ARRAY(cache->external_cache_pointer);
+                int result = external_handlers[oparg](external_cache_pointer, &stack_pointer);
+                if (result == 2) {
+                    unsigned long offset = next_instr - 1 - _PyCode_CODE(_PyFrame_GetCode(frame));
+                    next_instr = _PyExternal_Deoptimize(next_instr - 1, frame);
+                    oparg = next_instr->op.arg;
+                    DISPATCH_SAME_OPARG();
+                }
+                next_instr += INLINE_CACHE_ENTRIES_CALL;
+                DISPATCH();
             }
-            TARGET(BINARY_SUBSCR_EXTERNAL){
 
+            TARGET(BINARY_SUBSCR_EXTERNAL) {
+                _PyBinarySubscrCache *cache = (_PyBinarySubscrCache *)next_instr;
+                void *external_cache_pointer = POINTER_FROM_ARRAY(cache->external_cache_pointer);
+                int result = external_handlers[oparg](external_cache_pointer, &stack_pointer);
+                if (result == 2) {
+                    unsigned long offset = next_instr - 1 - _PyCode_CODE(_PyFrame_GetCode(frame));
+                    next_instr = _PyExternal_Deoptimize(next_instr - 1, frame);
+                    oparg = next_instr->op.arg;
+                    DISPATCH_SAME_OPARG();
+                }
+                next_instr += INLINE_CACHE_ENTRIES_BINARY_SUBSCR;
+                DISPATCH();
             }
-            TARGET(CALL_EXTERNAL){
-                
-            }
+
 
 #include "generated_cases.c.h"
 

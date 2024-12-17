@@ -1827,6 +1827,8 @@
             break;
         }
 
+        /* _CALL_LIST_APPEND is not a viable micro-op for tier 2 */
+
         case _CALL_METHOD_DESCRIPTOR_O: {
             _Py_UopsSymbol *res;
             res = sym_new_not_null(ctx);

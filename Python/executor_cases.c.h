@@ -979,6 +979,7 @@
             #endif
             stack_pointer += -1;
             _PyFrame_SetStackPointer(frame, stack_pointer);
+            _PyExternal_FunctionEnd(frame);
             assert(EMPTY());
             _Py_LeaveRecursiveCallPy(tstate);
             // GH-99729: We need to unlink the frame *before* clearing it:
@@ -3748,6 +3749,8 @@
             stack_pointer += -1 - oparg;
             break;
         }
+
+        /* _CALL_LIST_APPEND is not a viable micro-op for tier 2 because it has both popping and not-popping errors */
 
         case _CALL_METHOD_DESCRIPTOR_O: {
             PyObject **args;
