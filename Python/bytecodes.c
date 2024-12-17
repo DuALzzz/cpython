@@ -581,10 +581,7 @@ dummy_func(
             if (ADAPTIVE_COUNTER_TRIGGERS(counter)) {
                 next_instr = this_instr;
                 _Py_Specialize_BinarySubscr(container, sub, next_instr);
-                int result = _PyExternal_TrySpecialize(next_instr,&stack_pointer,(_PyCache *)cache);
-                if(result){
-                    oparg = next_instr->op.arg;
-                }
+#include "tryspecilize.h"
                 DISPATCH_SAME_OPARG();
             }
             STAT_INC(BINARY_SUBSCR, deferred);
@@ -3106,10 +3103,7 @@ dummy_func(
             if (ADAPTIVE_COUNTER_TRIGGERS(counter)) {
                 next_instr = this_instr;
                 _Py_Specialize_Call(callable, next_instr, oparg + (self_or_null != NULL));
-                int result = _PyExternal_TrySpecialize(next_instr,&stack_pointer,(_PyCache *)cache);
-                if(result){
-                    oparg = next_instr->op.arg;
-                }
+#include "tryspecilize.h"
                 DISPATCH_SAME_OPARG();
             }
             STAT_INC(CALL, deferred);
@@ -3473,18 +3467,6 @@ dummy_func(
             goto start_frame;
         }
         macro(CALL_ALLOC_AND_ENTER_INIT) =unused/1 + unused/2 + unused/4 + _CALL_ALLOC_AND_ENTER_INIT;
-        // inst(CALL_EXTERNAL,(unused/1, unused/2,unused/4, callable, null, args[oparg] -- unused)){
-        //     _PyCallCache* cache = (_PyCallCache*)next_instr;
-        //     void* external_cache_pointer = POINTER_FROM_ARRAY(cache->external_cache_pointer);
-        //     int result = external_handlers[oparg](external_cache_pointer, &stack_pointer);
-        //     if (result == 2) {
-        //         unsigned long offset = next_instr - 1 - _PyCode_CODE(_PyFrame_GetCode(frame));
-        //         next_instr = _PyExternal_Deoptimize(next_instr - 1, frame);
-        //         oparg = next_instr->op.arg;
-        //         DISPATCH_SAME_OPARG();
-        //     }
-        //     next_instr += INLINE_CACHE_ENTRIES_CALL;
-        // }
 
         inst(EXIT_INIT_CHECK, (should_be_none -- )) {
             assert(STACK_LEVEL() == 2);
@@ -4105,10 +4087,7 @@ dummy_func(
             if (ADAPTIVE_COUNTER_TRIGGERS(counter)) {
                 next_instr = this_instr;
                 _Py_Specialize_BinaryOp(lhs, rhs, next_instr, oparg, LOCALS_ARRAY);
-                int result = _PyExternal_TrySpecialize(next_instr,&stack_pointer,(_PyCache *)cache);
-                if(result){
-                    oparg = next_instr->op.arg;
-                }
+#include "tryspecilize.h"
                 DISPATCH_SAME_OPARG();
             }
             STAT_INC(BINARY_OP, deferred);

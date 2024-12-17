@@ -5247,7 +5247,7 @@
                 assert(frame != &entry_frame);
                 #endif
                 _PyFrame_SetStackPointer(frame, stack_pointer);
-                _PyExternal_FunctionEnd(frame);
+                //_PyExternal_FunctionEnd(frame);
                 assert(EMPTY());
                 _Py_LeaveRecursiveCallPy(tstate);
                 // GH-99729: We need to unlink the frame *before* clearing it:
@@ -5305,7 +5305,7 @@
             #endif
             stack_pointer += -1;
             _PyFrame_SetStackPointer(frame, stack_pointer);
-            _PyExternal_FunctionEnd(frame);
+            //_PyExternal_FunctionEnd(frame);
             assert(EMPTY());
             _Py_LeaveRecursiveCallPy(tstate);
             // GH-99729: We need to unlink the frame *before* clearing it:
