@@ -3750,8 +3750,6 @@
             break;
         }
 
-        /* _CALL_LIST_APPEND is not a viable micro-op for tier 2 because it has both popping and not-popping errors */
-
         case _CALL_METHOD_DESCRIPTOR_O: {
             PyObject **args;
             PyObject *self_or_null;

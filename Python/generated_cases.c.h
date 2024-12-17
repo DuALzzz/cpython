@@ -119,10 +119,7 @@
                 if (ADAPTIVE_COUNTER_TRIGGERS(counter)) {
                     next_instr = this_instr;
                     _Py_Specialize_BinaryOp(lhs, rhs, next_instr, oparg, LOCALS_ARRAY);
-                    int result = _PyExternal_TrySpecialize(next_instr,&stack_pointer,(_PyCache *)cache);
-                    if(result){
-                        oparg = next_instr->op.arg;
-                    }
+                    #include "tryspecilize.h"
                     DISPATCH_SAME_OPARG();
                 }
                 STAT_INC(BINARY_OP, deferred);
@@ -450,17 +447,13 @@
                 if (ADAPTIVE_COUNTER_TRIGGERS(counter)) {
                     next_instr = this_instr;
                     _Py_Specialize_BinarySubscr(container, sub, next_instr);
-                    int result = _PyExternal_TrySpecialize(next_instr,&stack_pointer,(_PyCache *)cache);
-                    if(result){
-                        oparg = next_instr->op.arg;
-                    }
+                    #include "tryspecilize.h"
                     DISPATCH_SAME_OPARG();
                 }
                 STAT_INC(BINARY_SUBSCR, deferred);
                 ADVANCE_ADAPTIVE_COUNTER(this_instr[1].counter);
                 #endif  /* ENABLE_SPECIALIZATION */
             }
-            /* Skip 4 cache entries */
             // _BINARY_SUBSCR
             {
                 res = PyObject_GetItem(container, sub);
@@ -468,6 +461,7 @@
                 Py_DECREF(sub);
                 if (res == NULL) goto pop_2_error;
             }
+            /* Skip 4 cache entries */
             stack_pointer[-2] = res;
             stack_pointer += -1;
             DISPATCH();
@@ -789,10 +783,7 @@
                 if (ADAPTIVE_COUNTER_TRIGGERS(counter)) {
                     next_instr = this_instr;
                     _Py_Specialize_Call(callable, next_instr, oparg + (self_or_null != NULL));
-                    int result = _PyExternal_TrySpecialize(next_instr,&stack_pointer,(_PyCache *)cache);
-                    if(result){
-                        oparg = next_instr->op.arg;
-                    }
+                    #include "tryspecilize.h"
                     DISPATCH_SAME_OPARG();
                 }
                 STAT_INC(CALL, deferred);
@@ -5247,7 +5238,7 @@
                 assert(frame != &entry_frame);
                 #endif
                 _PyFrame_SetStackPointer(frame, stack_pointer);
-                //_PyExternal_FunctionEnd(frame);
+                _PyExternal_FunctionEnd(frame);
                 assert(EMPTY());
                 _Py_LeaveRecursiveCallPy(tstate);
                 // GH-99729: We need to unlink the frame *before* clearing it:
@@ -5305,7 +5296,7 @@
             #endif
             stack_pointer += -1;
             _PyFrame_SetStackPointer(frame, stack_pointer);
-            //_PyExternal_FunctionEnd(frame);
+            _PyExternal_FunctionEnd(frame);
             assert(EMPTY());
             _Py_LeaveRecursiveCallPy(tstate);
             // GH-99729: We need to unlink the frame *before* clearing it:
