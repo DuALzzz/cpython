@@ -423,7 +423,6 @@ dummy_func(
             BINARY_OP_ADD_FLOAT,
             BINARY_OP_SUBTRACT_FLOAT,
             BINARY_OP_ADD_UNICODE,
-            //BINARY_OP_EXTERNAL,
             // BINARY_OP_INPLACE_ADD_UNICODE,  // See comments at that opcode.
         };
 
@@ -465,11 +464,11 @@ dummy_func(
         }
 
         macro(BINARY_OP_MULTIPLY_INT) =
-            _GUARD_BOTH_INT + unused/1 +   _BINARY_OP_MULTIPLY_INT + unused/4 ;
+            _GUARD_BOTH_INT + unused/1 + unused/4 + _BINARY_OP_MULTIPLY_INT;
         macro(BINARY_OP_ADD_INT) =
-            _GUARD_BOTH_INT + unused/1 +   _BINARY_OP_ADD_INT + unused/4 ;
+            _GUARD_BOTH_INT + unused/1 + unused/4 + _BINARY_OP_ADD_INT;
         macro(BINARY_OP_SUBTRACT_INT) =
-            _GUARD_BOTH_INT + unused/1 +  _BINARY_OP_SUBTRACT_INT + unused/4;
+            _GUARD_BOTH_INT + unused/1 + unused/4 + _BINARY_OP_SUBTRACT_INT;
 
         op(_GUARD_BOTH_FLOAT, (left, right -- left, right)) {
             EXIT_IF(!PyFloat_CheckExact(left));
@@ -509,11 +508,11 @@ dummy_func(
         }
 
         macro(BINARY_OP_MULTIPLY_FLOAT) =
-            _GUARD_BOTH_FLOAT + unused/1 +  _BINARY_OP_MULTIPLY_FLOAT + unused/4;
+            _GUARD_BOTH_FLOAT + unused/1 + unused/4 + _BINARY_OP_MULTIPLY_FLOAT;
         macro(BINARY_OP_ADD_FLOAT) =
-            _GUARD_BOTH_FLOAT + unused/1 +  _BINARY_OP_ADD_FLOAT + unused/4;
+            _GUARD_BOTH_FLOAT + unused/1 + unused/4 + _BINARY_OP_ADD_FLOAT;
         macro(BINARY_OP_SUBTRACT_FLOAT) =
-            _GUARD_BOTH_FLOAT + unused/1 +  _BINARY_OP_SUBTRACT_FLOAT + unused/4;
+            _GUARD_BOTH_FLOAT + unused/1 + unused/4 + _BINARY_OP_SUBTRACT_FLOAT;
 
         op(_GUARD_BOTH_UNICODE, (left, right -- left, right)) {
             EXIT_IF(!PyUnicode_CheckExact(left));
@@ -529,7 +528,7 @@ dummy_func(
         }
 
         macro(BINARY_OP_ADD_UNICODE) =
-            _GUARD_BOTH_UNICODE + unused/1 +  _BINARY_OP_ADD_UNICODE + unused/4;
+            _GUARD_BOTH_UNICODE + unused/1 + unused/4 + _BINARY_OP_ADD_UNICODE;
 
         // This is a subtle one. It's a super-instruction for
         // BINARY_OP_ADD_UNICODE followed by STORE_FAST
@@ -564,8 +563,7 @@ dummy_func(
         }
 
         macro(BINARY_OP_INPLACE_ADD_UNICODE) =
-            _GUARD_BOTH_UNICODE + unused/1 +  _BINARY_OP_INPLACE_ADD_UNICODE + unused/4;
-
+            _GUARD_BOTH_UNICODE + unused/1 + unused/4 + _BINARY_OP_INPLACE_ADD_UNICODE;
 
         family(BINARY_SUBSCR, INLINE_CACHE_ENTRIES_BINARY_SUBSCR) = {
             BINARY_SUBSCR_DICT,
@@ -595,7 +593,7 @@ dummy_func(
             ERROR_IF(res == NULL, error);
         }
 
-        macro(BINARY_SUBSCR) = _SPECIALIZE_BINARY_SUBSCR + _BINARY_SUBSCR + unused/4;
+        macro(BINARY_SUBSCR) = _SPECIALIZE_BINARY_SUBSCR + unused/4 +_BINARY_SUBSCR;
 
         inst(BINARY_SLICE, (container, start, stop -- res)) {
             PyObject *slice = _PyBuildSlice_ConsumeRefs(start, stop);
@@ -626,95 +624,8 @@ dummy_func(
             Py_DECREF(container);
             ERROR_IF(err, error);
         }
-        // this modification incur unexpected uop
-        // //TODO: unused/4 in wrong place
-        // op(_BINARY_SUBSCR_LIST_INT, (list, sub -- res)) {
-        //     DEOPT_IF(!PyLong_CheckExact(sub));
-        //     DEOPT_IF(!PyList_CheckExact(list));
 
-        //     // Deopt unless 0 <= sub < PyList_Size(list)
-        //     DEOPT_IF(!_PyLong_IsNonNegativeCompact((PyLongObject *)sub));
-        //     Py_ssize_t index = ((PyLongObject*)sub)->long_value.ob_digit[0];
-        //     DEOPT_IF(index >= PyList_GET_SIZE(list));
-        //     STAT_INC(BINARY_SUBSCR, hit);
-        //     res = PyList_GET_ITEM(list, index);
-        //     assert(res != NULL);
-        //     Py_INCREF(res);
-        //     _Py_DECREF_SPECIALIZED(sub, (destructor)PyObject_Free);
-        //     Py_DECREF(list);
-        // }
-        // macro(BINARY_SUBSCR_LIST_INT) = unused/1 + unused/4 + _BINARY_SUBSCR_LIST_INT ;
-        // //TODO: unused/4 in wrong place
-        // op(_BINARY_SUBSCR_STR_INT, (str, sub -- res)) {
-        //     DEOPT_IF(!PyLong_CheckExact(sub));
-        //     DEOPT_IF(!PyUnicode_CheckExact(str));
-        //     DEOPT_IF(!_PyLong_IsNonNegativeCompact((PyLongObject *)sub));
-        //     Py_ssize_t index = ((PyLongObject*)sub)->long_value.ob_digit[0];
-        //     DEOPT_IF(PyUnicode_GET_LENGTH(str) <= index);
-        //     // Specialize for reading an ASCII character from any string:
-        //     Py_UCS4 c = PyUnicode_READ_CHAR(str, index);
-        //     DEOPT_IF(Py_ARRAY_LENGTH(_Py_SINGLETON(strings).ascii) <= c);
-        //     STAT_INC(BINARY_SUBSCR, hit);
-        //     res = (PyObject*)&_Py_SINGLETON(strings).ascii[c];
-        //     _Py_DECREF_SPECIALIZED(sub, (destructor)PyObject_Free);
-        //     Py_DECREF(str);
-        // }
-        // macro(BINARY_SUBSCR_STR_INT) = unused/1 + unused/4 + _BINARY_SUBSCR_STR_INT;
-        // //TODO: unused/4 in wrong place
-        // op(_BINARY_SUBSCR_TUPLE_INT, (tuple, sub -- res)) {
-        //     DEOPT_IF(!PyLong_CheckExact(sub));
-        //     DEOPT_IF(!PyTuple_CheckExact(tuple));
-
-        //     // Deopt unless 0 <= sub < PyTuple_Size(list)
-        //     DEOPT_IF(!_PyLong_IsNonNegativeCompact((PyLongObject *)sub));
-        //     Py_ssize_t index = ((PyLongObject*)sub)->long_value.ob_digit[0];
-        //     DEOPT_IF(index >= PyTuple_GET_SIZE(tuple));
-        //     STAT_INC(BINARY_SUBSCR, hit);
-        //     res = PyTuple_GET_ITEM(tuple, index);
-        //     assert(res != NULL);
-        //     Py_INCREF(res);
-        //     _Py_DECREF_SPECIALIZED(sub, (destructor)PyObject_Free);
-        //     Py_DECREF(tuple);
-        // }
-        // macro(BINARY_SUBSCR_TUPLE_INT) = unused/1 + unused/4 +_BINARY_SUBSCR_TUPLE_INT; 
-        // //TODO: unused/4 in wrong place
-        // op(_BINARY_SUBSCR_DICT, (dict, sub -- res)) {
-        //     DEOPT_IF(!PyDict_CheckExact(dict));
-        //     STAT_INC(BINARY_SUBSCR, hit);
-        //     int rc = PyDict_GetItemRef(dict, sub, &res);
-        //     if (rc == 0) {
-        //         _PyErr_SetKeyError(sub);
-        //     }
-        //     DECREF_INPUTS();
-        //     ERROR_IF(rc <= 0, error); // not found or error
-        // }
-        // macro(BINARY_SUBSCR_DICT) = unused/1 + unused/4 + _BINARY_SUBSCR_DICT;
-        // //TODO: unused/4 in wrong place
-        // op(_BINARY_SUBSCR_GETITEM, (container, sub -- unused)) {
-        //     DEOPT_IF(tstate->interp->eval_frame);
-        //     PyTypeObject *tp = Py_TYPE(container);
-        //     DEOPT_IF(!PyType_HasFeature(tp, Py_TPFLAGS_HEAPTYPE));
-        //     PyHeapTypeObject *ht = (PyHeapTypeObject *)tp;
-        //     PyObject *cached = ht->_spec_cache.getitem;
-        //     DEOPT_IF(cached == NULL);
-        //     assert(PyFunction_Check(cached));
-        //     PyFunctionObject *getitem = (PyFunctionObject *)cached;
-        //     uint32_t cached_version = ht->_spec_cache.getitem_version;
-        //     DEOPT_IF(getitem->func_version != cached_version);
-        //     PyCodeObject *code = (PyCodeObject *)getitem->func_code;
-        //     assert(code->co_argcount == 2);
-        //     DEOPT_IF(!_PyThreadState_HasStackSpace(tstate, code->co_framesize));
-        //     STAT_INC(BINARY_SUBSCR, hit);
-        //     Py_INCREF(getitem);
-        //     _PyInterpreterFrame *new_frame = _PyFrame_PushUnchecked(tstate, getitem, 2);
-        //     STACK_SHRINK(2);
-        //     new_frame->localsplus[0] = container;
-        //     new_frame->localsplus[1] = sub;
-        //     frame->return_offset = (uint16_t)(next_instr - this_instr);
-        //     DISPATCH_INLINED(new_frame);
-        // }
-        // macro(BINARY_SUBSCR_GETITEM) = unused/1 + unused/4 + _BINARY_SUBSCR_GETITEM;
-        inst(BINARY_SUBSCR_LIST_INT, (unused/1,unused/4, list, sub -- res)) {
+        inst(BINARY_SUBSCR_LIST_INT, (unused/1, unused/4 , list, sub -- res)) {
             DEOPT_IF(!PyLong_CheckExact(sub));
             DEOPT_IF(!PyList_CheckExact(list));
 
@@ -730,7 +641,7 @@ dummy_func(
             Py_DECREF(list);
         }
 
-        inst(BINARY_SUBSCR_STR_INT, (unused/1,unused/4, str, sub -- res)) {
+        inst(BINARY_SUBSCR_STR_INT, (unused/1, unused/4, str, sub -- res)) {
             DEOPT_IF(!PyLong_CheckExact(sub));
             DEOPT_IF(!PyUnicode_CheckExact(str));
             DEOPT_IF(!_PyLong_IsNonNegativeCompact((PyLongObject *)sub));
@@ -745,7 +656,7 @@ dummy_func(
             Py_DECREF(str);
         }
 
-        inst(BINARY_SUBSCR_TUPLE_INT, (unused/1, unused/4,tuple, sub -- res)) {
+        inst(BINARY_SUBSCR_TUPLE_INT, (unused/1, unused/4, tuple, sub -- res)) {
             DEOPT_IF(!PyLong_CheckExact(sub));
             DEOPT_IF(!PyTuple_CheckExact(tuple));
 
@@ -3152,7 +3063,7 @@ dummy_func(
             GO_TO_INSTRUCTION(CALL);
         }
 
-        // Cache layout: counter/1, func_version/2, external_cache/4
+        // Cache layout: counter/1, func_version/2,cache/4
         // CALL_INTRINSIC_1/2, CALL_KW, and CALL_FUNCTION_EX aren't members!
         family(CALL, INLINE_CACHE_ENTRIES_CALL) = {
             CALL_BOUND_METHOD_EXACT_ARGS,
@@ -3175,7 +3086,6 @@ dummy_func(
             CALL_PY_GENERAL,
             CALL_BOUND_METHOD_GENERAL,
             CALL_NON_PY_GENERAL,
-            //CALL_EXTERNAL,
         };
 
         specializing op(_SPECIALIZE_CALL, (counter/1, callable, self_or_null, args[oparg] -- callable, self_or_null, args[oparg])) {
@@ -3299,10 +3209,10 @@ dummy_func(
             unused/1 + // Skip over the counter
             _CHECK_PEP_523 +
             _CHECK_FUNCTION_VERSION +
+            unused/4 +
             _PY_FRAME_GENERAL +
             _SAVE_RETURN_OFFSET +
-            _PUSH_FRAME+
-            unused/4;
+            _PUSH_FRAME;
 
         op(_CHECK_METHOD_VERSION, (func_version/2, callable, null, unused[oparg] -- callable, null, unused[oparg])) {
             EXIT_IF(Py_TYPE(callable) != &PyMethod_Type);
@@ -3328,11 +3238,11 @@ dummy_func(
             unused/1 + // Skip over the counter
             _CHECK_PEP_523 +
             _CHECK_METHOD_VERSION +
+            unused/4 +
             _EXPAND_METHOD +
             _PY_FRAME_GENERAL +
             _SAVE_RETURN_OFFSET +
-            _PUSH_FRAME +
-            unused/4;
+            _PUSH_FRAME;
 
         op(_CHECK_IS_NOT_PY_CALLABLE, (callable, unused, unused[oparg] -- callable, unused, unused[oparg])) {
             EXIT_IF(PyFunction_Check(callable));
@@ -3364,10 +3274,10 @@ dummy_func(
         macro(CALL_NON_PY_GENERAL) =
             unused/1 + // Skip over the counter
             unused/2 +
+            unused/4 +
             _CHECK_IS_NOT_PY_CALLABLE +
             _CALL_NON_PY_GENERAL +
-            _CHECK_PERIODIC + 
-            unused/4;
+            _CHECK_PERIODIC;
 
         op(_CHECK_CALL_BOUND_METHOD_EXACT_ARGS, (callable, null, unused[oparg] -- callable, null, unused[oparg])) {
             EXIT_IF(null != NULL);
@@ -3435,32 +3345,23 @@ dummy_func(
             _CHECK_CALL_BOUND_METHOD_EXACT_ARGS +
             _INIT_CALL_BOUND_METHOD_EXACT_ARGS +
             _CHECK_FUNCTION_EXACT_ARGS +
+            unused/4 +
             _CHECK_STACK_SPACE +
             _INIT_CALL_PY_EXACT_ARGS +
             _SAVE_RETURN_OFFSET +
-            _PUSH_FRAME +
-            unused/4 ;
+            _PUSH_FRAME;
 
         macro(CALL_PY_EXACT_ARGS) =
             unused/1 + // Skip over the counter
             _CHECK_PEP_523 +
             _CHECK_FUNCTION_EXACT_ARGS +
+            unused/4 +
             _CHECK_STACK_SPACE +
             _INIT_CALL_PY_EXACT_ARGS +
             _SAVE_RETURN_OFFSET +
-            _PUSH_FRAME +
-            unused/4 ;
-        // //TODO: unused/4 in wrong place
-        // op(_CALL_TYPE_1, (callable, null, arg -- res)) {
-        //     assert(oparg == 1);
-        //     DEOPT_IF(null != NULL);
-        //     DEOPT_IF(callable != (PyObject *)&PyType_Type);
-        //     STAT_INC(CALL, hit);
-        //     res = Py_NewRef(Py_TYPE(arg));
-        //     Py_DECREF(arg);
-        // }
-        // macro(CALL_TYPE_1) = unused/1 + unused/2 + unused/4 + _CALL_TYPE_1; 
-        inst(CALL_TYPE_1, (unused/1, unused/2, unused/4, callable, null, arg -- res)) {
+            _PUSH_FRAME;
+
+        inst(CALL_TYPE_1, (unused/1, unused/2,unused/4, callable, null, arg -- res)) {
             assert(oparg == 1);
             DEOPT_IF(null != NULL);
             DEOPT_IF(callable != (PyObject *)&PyType_Type);
@@ -3482,9 +3383,9 @@ dummy_func(
         macro(CALL_STR_1) =
             unused/1 +
             unused/2 +
+            unused/4 +
             _CALL_STR_1 +
-            _CHECK_PERIODIC +
-            unused/4;
+            _CHECK_PERIODIC;
 
         op(_CALL_TUPLE_1, (callable, null, arg -- res)) {
             assert(oparg == 1);
@@ -3499,64 +3400,11 @@ dummy_func(
         macro(CALL_TUPLE_1) =
             unused/1 +
             unused/2 +
+            unused/4 +
             _CALL_TUPLE_1 +
-            _CHECK_PERIODIC +
-            unused/4;
-        //TODO: unused/4 in wrong place
-        // op(_CALL_ALLOC_AND_ENTER_INIT, (callable, null, args[oparg] -- unused)) {
-        //     /* This instruction does the following:
-        //      * 1. Creates the object (by calling ``object.__new__``)
-        //      * 2. Pushes a shim frame to the frame stack (to cleanup after ``__init__``)
-        //      * 3. Pushes the frame for ``__init__`` to the frame stack
-        //      * */
-        //     _PyCallCache *cache = (_PyCallCache *)&this_instr[1];
-        //     DEOPT_IF(null != NULL);
-        //     DEOPT_IF(!PyType_Check(callable));
-        //     PyTypeObject *tp = (PyTypeObject *)callable;
-        //     DEOPT_IF(tp->tp_version_tag != read_u32(cache->func_version));
-        //     assert(tp->tp_flags & Py_TPFLAGS_INLINE_VALUES);
-        //     PyHeapTypeObject *cls = (PyHeapTypeObject *)callable;
-        //     PyFunctionObject *init = (PyFunctionObject *)cls->_spec_cache.init;
-        //     PyCodeObject *code = (PyCodeObject *)init->func_code;
-        //     DEOPT_IF(code->co_argcount != oparg+1);
-        //     DEOPT_IF((code->co_flags & (CO_VARKEYWORDS | CO_VARARGS | CO_OPTIMIZED)) != CO_OPTIMIZED);
-        //     DEOPT_IF(code->co_kwonlyargcount);
-        //     DEOPT_IF(!_PyThreadState_HasStackSpace(tstate, code->co_framesize + _Py_InitCleanup.co_framesize));
-        //     STAT_INC(CALL, hit);
-        //     PyObject *self = _PyType_NewManagedObject(tp);
-        //     if (self == NULL) {
-        //         ERROR_NO_POP();
-        //     }
-        //     Py_DECREF(tp);
-        //     _PyInterpreterFrame *shim = _PyFrame_PushTrampolineUnchecked(
-        //         tstate, (PyCodeObject *)&_Py_InitCleanup, 1);
-        //     assert(_PyCode_CODE((PyCodeObject *)shim->f_executable)[0].op.code == EXIT_INIT_CHECK);
-        //     /* Push self onto stack of shim */
-        //     Py_INCREF(self);
-        //     shim->localsplus[0] = self;
-        //     Py_INCREF(init);
-        //     _PyInterpreterFrame *init_frame = _PyFrame_PushUnchecked(tstate, init, oparg+1);
-        //     /* Copy self followed by args to __init__ frame */
-        //     init_frame->localsplus[0] = self;
-        //     for (int i = 0; i < oparg; i++) {
-        //         init_frame->localsplus[i+1] = args[i];
-        //     }
-        //     frame->return_offset = (uint16_t)(next_instr - this_instr);
-        //     STACK_SHRINK(oparg+2);
-        //     _PyFrame_SetStackPointer(frame, stack_pointer);
-        //     /* Link frames */
-        //     init_frame->previous = shim;
-        //     shim->previous = frame;
-        //     frame = tstate->current_frame = init_frame;
-        //     CALL_STAT_INC(inlined_py_calls);
-        //     /* Account for pushing the extra frame.
-        //      * We don't check recursion depth here,
-        //      * as it will be checked after start_frame */
-        //     tstate->py_recursion_remaining--;
-        //     goto start_frame;
-        // }
-        // macro(CALL_ALLOC_AND_ENTER_INIT) =unused/1 + unused/2 + unused/4 + _CALL_ALLOC_AND_ENTER_INIT;
-        inst(CALL_ALLOC_AND_ENTER_INIT, (unused/1, unused/2,unused/4, callable, null, args[oparg] -- unused)) {
+            _CHECK_PERIODIC;
+
+        inst(CALL_ALLOC_AND_ENTER_INIT, (unused/1, unused/2, unused/4,callable, null, args[oparg] -- unused)) {
             /* This instruction does the following:
              * 1. Creates the object (by calling ``object.__new__``)
              * 2. Pushes a shim frame to the frame stack (to cleanup after ``__init__``)
@@ -3641,9 +3489,9 @@ dummy_func(
         macro(CALL_BUILTIN_CLASS) =
             unused/1 +
             unused/2 +
+            unused/4 +
             _CALL_BUILTIN_CLASS +
-            _CHECK_PERIODIC +
-            unused/4;
+            _CHECK_PERIODIC;
 
         op(_CALL_BUILTIN_O, (callable, self_or_null, args[oparg] -- res)) {
             /* Builtin METH_O functions */
@@ -3673,9 +3521,9 @@ dummy_func(
         macro(CALL_BUILTIN_O) =
             unused/1 +
             unused/2 +
+            unused/4 +
             _CALL_BUILTIN_O +
-            _CHECK_PERIODIC +
-            unused/4;
+            _CHECK_PERIODIC;
 
         op(_CALL_BUILTIN_FAST, (callable, self_or_null, args[oparg] -- res)) {
             /* Builtin METH_FASTCALL functions, without keywords */
@@ -3706,9 +3554,9 @@ dummy_func(
         macro(CALL_BUILTIN_FAST) =
             unused/1 +
             unused/2 +
+            unused/4 +
             _CALL_BUILTIN_FAST +
-            _CHECK_PERIODIC +
-            unused/4;
+            _CHECK_PERIODIC;
 
         op(_CALL_BUILTIN_FAST_WITH_KEYWORDS, (callable, self_or_null, args[oparg] -- res)) {
             /* Builtin METH_FASTCALL | METH_KEYWORDS functions */
@@ -3738,89 +3586,11 @@ dummy_func(
         macro(CALL_BUILTIN_FAST_WITH_KEYWORDS) =
             unused/1 +
             unused/2 +
+            unused/4 +
             _CALL_BUILTIN_FAST_WITH_KEYWORDS +
-            _CHECK_PERIODIC +
-            unused/4;
-        // //TODO: unused/4 in wrong place
-        // op(_CALL_LEN, (callable, self_or_null, args[oparg] -- res)) {
-        //     /* len(o) */
-        //     int total_args = oparg;
-        //     if (self_or_null != NULL) {
-        //         args--;
-        //         total_args++;
-        //     }
-        //     DEOPT_IF(total_args != 1);
-        //     PyInterpreterState *interp = tstate->interp;
-        //     DEOPT_IF(callable != interp->callable_cache.len);
-        //     STAT_INC(CALL, hit);
-        //     PyObject *arg = args[0];
-        //     Py_ssize_t len_i = PyObject_Length(arg);
-        //     if (len_i < 0) {
-        //         ERROR_NO_POP();
-        //     }
-        //     res = PyLong_FromSsize_t(len_i);
-        //     assert((res != NULL) ^ (_PyErr_Occurred(tstate) != NULL));
-        //     if (res == NULL) {
-        //         GOTO_ERROR(error);
-        //     }
-        //     Py_DECREF(callable);
-        //     Py_DECREF(arg);
-        // }
-        // macro(CALL_LEN) = unused/1 + unused/2 + unused/4 + _CALL_LEN;
+            _CHECK_PERIODIC;
 
-        // //TODO: unused/4 in wrong place
-        // op(_CALL_ISINSTANCE, (callable, self_or_null, args[oparg] -- res)) {
-        //     /* isinstance(o, o2) */
-        //     int total_args = oparg;
-        //     if (self_or_null != NULL) {
-        //         args--;
-        //         total_args++;
-        //     }
-        //     DEOPT_IF(total_args != 2);
-        //     PyInterpreterState *interp = tstate->interp;
-        //     DEOPT_IF(callable != interp->callable_cache.isinstance);
-        //     STAT_INC(CALL, hit);
-        //     PyObject *cls = args[1];
-        //     PyObject *inst = args[0];
-        //     int retval = PyObject_IsInstance(inst, cls);
-        //     if (retval < 0) {
-        //         ERROR_NO_POP();
-        //     }
-        //     res = PyBool_FromLong(retval);
-        //     assert((res != NULL) ^ (_PyErr_Occurred(tstate) != NULL));
-        //     if (res == NULL) {
-        //         GOTO_ERROR(error);
-        //     }
-        //     Py_DECREF(inst);
-        //     Py_DECREF(cls);
-        //     Py_DECREF(callable);
-        // }
-        // macro(CALL_ISINSTANCE) = unused/1 + unused/2 + unused/4 + _CALL_ISINSTANCE;
-
-        // // This is secretly a super-instruction
-        // //TODO: unused/4 in wrong place
-        // //tier1 
-        // op(_CALL_LIST_APPEND, (callable, self, arg -- unused)) {
-        //     assert(oparg == 1);
-        //     PyInterpreterState *interp = tstate->interp;
-        //     DEOPT_IF(callable != interp->callable_cache.list_append);
-        //     assert(self != NULL);
-        //     DEOPT_IF(!PyList_Check(self));
-        //     STAT_INC(CALL, hit);
-        //     if (_PyList_AppendTakeRef((PyListObject *)self, arg) < 0) {
-        //         goto pop_1_error;  // Since arg is DECREF'ed already
-        //     }
-        //     Py_DECREF(self);
-        //     Py_DECREF(callable);
-        //     STACK_SHRINK(3);
-        //     // Skip POP_TOP
-        //     assert(next_instr->op.code == POP_TOP);
-        //     SKIP_OVER(1);
-        //     DISPATCH();
-        // }
-        // macro(CALL_LIST_APPEND) = unused/1 + unused/2 + unused/4 + _CALL_LIST_APPEND;
-        
-        inst(CALL_LEN, (unused/1, unused/2,unused/4, callable, self_or_null, args[oparg] -- res)) {
+        inst(CALL_LEN, (unused/1, unused/2, unused/4, callable, self_or_null, args[oparg] -- res)) {
             /* len(o) */
             int total_args = oparg;
             if (self_or_null != NULL) {
@@ -3845,7 +3615,7 @@ dummy_func(
             Py_DECREF(arg);
         }
 
-        inst(CALL_ISINSTANCE, (unused/1, unused/2, unused/4,callable, self_or_null, args[oparg] -- res)) {
+        inst(CALL_ISINSTANCE, (unused/1, unused/2,unused/4, callable, self_or_null, args[oparg] -- res)) {
             /* isinstance(o, o2) */
             int total_args = oparg;
             if (self_or_null != NULL) {
@@ -3892,7 +3662,7 @@ dummy_func(
             DISPATCH();
         }
 
-        op(_CALL_METHOD_DESCRIPTOR_O, (callable, self_or_null, args[oparg] -- res)) {
+         op(_CALL_METHOD_DESCRIPTOR_O, (callable, self_or_null, args[oparg] -- res)) {
             int total_args = oparg;
             if (self_or_null != NULL) {
                 args--;
@@ -3923,9 +3693,9 @@ dummy_func(
         macro(CALL_METHOD_DESCRIPTOR_O) =
             unused/1 +
             unused/2 +
+            unused/4 +
             _CALL_METHOD_DESCRIPTOR_O +
-            _CHECK_PERIODIC +
-            unused/4;
+            _CHECK_PERIODIC;
 
         op(_CALL_METHOD_DESCRIPTOR_FAST_WITH_KEYWORDS, (callable, self_or_null, args[oparg] -- res)) {
             int total_args = oparg;
@@ -3958,9 +3728,9 @@ dummy_func(
         macro(CALL_METHOD_DESCRIPTOR_FAST_WITH_KEYWORDS) =
             unused/1 +
             unused/2 +
+            unused/4 +
             _CALL_METHOD_DESCRIPTOR_FAST_WITH_KEYWORDS +
-            _CHECK_PERIODIC +
-            unused/4;
+            _CHECK_PERIODIC;
 
         op(_CALL_METHOD_DESCRIPTOR_NOARGS, (callable, self_or_null, args[oparg] -- res)) {
             assert(oparg == 0 || oparg == 1);
@@ -3992,9 +3762,9 @@ dummy_func(
         macro(CALL_METHOD_DESCRIPTOR_NOARGS) =
             unused/1 +
             unused/2 +
+            unused/4 +
             _CALL_METHOD_DESCRIPTOR_NOARGS +
-            _CHECK_PERIODIC +
-            unused/4;
+            _CHECK_PERIODIC;
 
         op(_CALL_METHOD_DESCRIPTOR_FAST, (callable, self_or_null, args[oparg] -- res)) {
             int total_args = oparg;
@@ -4026,9 +3796,9 @@ dummy_func(
         macro(CALL_METHOD_DESCRIPTOR_FAST) =
             unused/1 +
             unused/2 +
+            unused/4 +
             _CALL_METHOD_DESCRIPTOR_FAST +
-            _CHECK_PERIODIC +
-            unused/4;
+            _CHECK_PERIODIC;
 
         inst(INSTRUMENTED_CALL_KW, ( -- )) {
             int is_meth = PEEK(oparg + 2) != NULL;
@@ -4320,7 +4090,7 @@ dummy_func(
             ERROR_IF(res == NULL, error);
         }
 
-        macro(BINARY_OP) = _SPECIALIZE_BINARY_OP  + _BINARY_OP + unused/4;
+        macro(BINARY_OP) = _SPECIALIZE_BINARY_OP + unused/4 + _BINARY_OP;
 
         pure inst(SWAP, (bottom, unused[oparg-2], top --
                     top, unused[oparg-2], bottom)) {

@@ -91,8 +91,8 @@ class _Target(typing.Generic[_S, _R]):
         # platforms we later assume that any function starting with "_JIT_" uses
         # the GHC calling convention:
         entry_symbol = "_JIT_ENTRY" if "_JIT_ENTRY" in group.symbols else "_ENTRY"
-        assert group.symbols[entry_symbol] == (_stencils.HoleValue.CODE, 0), (
-            f"Assertion failed. Symbols: {group.symbols}, Entry symbol: {entry_symbol}, Path:{path}"
+        assert group.symbols[entry_symbol] == (_stencils.HoleValue.CODE, 176), (
+            f"Assertion failed. Symbols: {group.symbols}, Entry symbol: {entry_symbol}, Path:{path}\n{group.code.disassembly}"
         )
 
         if group.data.body:

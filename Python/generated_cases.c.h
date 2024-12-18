@@ -454,6 +454,7 @@
                 ADVANCE_ADAPTIVE_COUNTER(this_instr[1].counter);
                 #endif  /* ENABLE_SPECIALIZATION */
             }
+            /* Skip 4 cache entries */
             // _BINARY_SUBSCR
             {
                 res = PyObject_GetItem(container, sub);
@@ -461,7 +462,6 @@
                 Py_DECREF(sub);
                 if (res == NULL) goto pop_2_error;
             }
-            /* Skip 4 cache entries */
             stack_pointer[-2] = res;
             stack_pointer += -1;
             DISPATCH();
